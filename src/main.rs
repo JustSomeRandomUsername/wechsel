@@ -196,7 +196,7 @@ fn init_prj(args: &Args) -> io::Result<(Config, String)> {
         target.push(folder);
         println!("Moving folder {:?} to {:?}", folder_path, &target);
         fs::rename(&folder_path, &target)
-            .expect(format!("Could not move folder: {}", folder).as_str());
+            .expect(format!("Could not move folder: {}", folder).as_str());//TODO should not panic if folder not found
     }
         
     let conf = Config {
@@ -331,7 +331,7 @@ fn change_prj(name: &str, config: &mut Config) -> io::Result<()> {
         on_change_script.push(".on-prj-change");
         execute(on_change_script)?;
 
-        if let Some(mut script) = dirs::home_dir() {
+        if let Some(mut script) = dirs::config_dir() {
             script.push(".on-prj-change");
             execute(script)?;
         }
