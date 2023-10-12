@@ -318,23 +318,26 @@ fn change_prj(name: &str, config: &mut Config) -> io::Result<()> {
             }
         }
 
-        fn execute(script: PathBuf) -> io::Result<()>{
+        fn execute(script: PathBuf) {
             if script.is_file() {
-                std::process::Command::new("sh")
+                if let Ok(mut child) = std::process::Command::new("sh")
                     .arg("-c")
                     .arg(&script)
-                    .spawn()?;
+                    .spawn() {
+                        let _ = child.wait();
+                    }
             }
-            Ok(())
         }
+        
+        // Global on change script .config/on-prj-change
+        if let Some(mut script) = dirs::config_dir() {
+            script.push("on-prj-change");
+            execute(script);
+        }
+        // Project specific on change script .on-prj-change
         let mut on_change_script = PathBuf::from(&prj_path);
         on_change_script.push(".on-prj-change");
-        execute(on_change_script)?;
-
-        if let Some(mut script) = dirs::config_dir() {
-            script.push(".on-prj-change");
-            execute(script)?;
-        }
+        execute(on_change_script);
     }
         
     config.active = name.to_owned();
