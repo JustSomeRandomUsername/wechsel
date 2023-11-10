@@ -137,16 +137,40 @@ fn main() {
     }
 
     //Change Project
-    if let Some(target) = prj_name.as_ref() {
+    let after_scripts = if let Some(target) = prj_name.as_ref() {
         match change_prj(&target, &mut config) {
-            Ok(_) => println!("Changed to Project {}", target),
-            Err(e) => println!("Could not change to Project {}, Error: {}", target, e)
+            Ok(after_scripts) => {
+                println!("Changed to Project {}", target);
+                Some(after_scripts)
+            },
+            Err(e) => {
+                println!("Could not change to Project {}, Error: {}", target, e);
+                None
+            }
         }
-    }
+    } else {None};
 
     //Write Config to json
     std::fs::write(&path,serde_json::to_string_pretty(&config).unwrap())
             .expect("Could not write initial config file");
+
+
+    if let Some(after_scripts) = after_scripts {
+        fn execute(script: PathBuf) {
+            if script.is_file() {
+                if let Ok(mut child) = std::process::Command::new("sh")
+                    .arg("-c")
+                    .arg(&script)
+                    .spawn() {
+                        let _ = child.wait();
+                    }
+            }
+        }
+
+        for script in after_scripts {
+            execute(script);
+        }
+    }
 }
 
 fn init_prj(args: &Args) -> io::Result<(Config, String)> {
@@ -263,7 +287,7 @@ fn new_prj(args: &Args, config: &mut Config, prj_name: &str, folders: Vec<String
     Ok(())
 }
 
-fn change_prj(name: &str, config: &mut Config) -> io::Result<()> {
+fn change_prj(name: &str, config: &mut Config) -> io::Result<Vec<PathBuf>> {
     // Find Project Folder Urls
     let map = config.all_prjs.walk(name, &(),
     |p, _| {
@@ -286,7 +310,7 @@ fn change_prj(name: &str, config: &mut Config) -> io::Result<()> {
         return (links, format!("{}/{}",p.path, child_links.1));
     });
 
-    if let Some((map, prj_path)) = map {
+    let scripts = if let Some((map, prj_path)) = map {
         // Link Folders
         for (name, path) in map {
             let mut parking = dirs::home_dir().ok_or(io::Error::new(std::io::ErrorKind::Other, "No Home dir found"))?;
@@ -317,31 +341,25 @@ fn change_prj(name: &str, config: &mut Config) -> io::Result<()> {
                 std::os::unix::fs::symlink(&script_path, &script_target).unwrap_or_default();
             }
         }
-
-        fn execute(script: PathBuf) {
-            if script.is_file() {
-                if let Ok(mut child) = std::process::Command::new("sh")
-                    .arg("-c")
-                    .arg(&script)
-                    .spawn() {
-                        let _ = child.wait();
-                    }
-            }
-        }
         
+        let mut scripts = vec![];
         // Global on change script .config/on-prj-change
         if let Some(mut script) = dirs::config_dir() {
             script.push("on-prj-change");
-            execute(script);
+            scripts.push(script);
         }
         // Project specific on change script .on-prj-change
         let mut on_change_script = PathBuf::from(&prj_path);
         on_change_script.push(".on-prj-change");
-        execute(on_change_script);
-    }
+        scripts.push(on_change_script);
+        
+        scripts
+    } else {
+        vec![]
+    };
         
     config.active = name.to_owned();
-    return Ok(());
+    return Ok(scripts);
 }
 
 
