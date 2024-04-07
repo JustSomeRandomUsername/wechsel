@@ -2,7 +2,7 @@ use std::{collections::HashMap, fs, io, path::PathBuf};
 
 use crate::Config;
 
-pub fn change_prj(name: &str, config: &mut Config) -> io::Result<(Vec<PathBuf>, HashMap<String, String>)> {
+pub fn change_prj(name: &str, config: &mut Config, config_dir: PathBuf) -> io::Result<(Vec<PathBuf>, HashMap<String, String>)> {
     // Find Project Folder Urls
     let map = config.all_prjs.walk(name, &(),
     |p, _| {
@@ -42,16 +42,6 @@ pub fn change_prj(name: &str, config: &mut Config) -> io::Result<(Vec<PathBuf>, 
 
             fs::rename(&parking, &target)?
             
-        }
-
-        let Some(mut config_dir) = dirs::config_dir() else {
-            return Err(io::Error::new(std::io::ErrorKind::Other, "No Config dir found"));
-        };
-
-        config_dir.push("wechsel");
-
-        if !config_dir.exists() {
-            fs::create_dir(&config_dir)?;
         }
 
         let env_vars = HashMap::from_iter(vec![
