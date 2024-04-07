@@ -10,10 +10,11 @@ pub fn init_prj(config_dir: PathBuf) -> io::Result<(Config, String)> {
     println!("Wechsel need a folder to store your projects in.");
     println!("By default it will be called \"projects\" and will be created in your home directory.");
     println!("You can pick where you want to have it, either enter an absolute path or your input will be used relative to you home directory.");
-    let name = Text::new("projects folder path")
+    let Ok(name) = Text::new("projects folder path")
         .with_default("projects")
-        .prompt()
-        .expect("No path given");
+        .prompt() else {
+            std::process::exit(1);
+        };
 
     let prjs_path = dirs::home_dir()
         .expect("No Home dir found")
@@ -29,10 +30,11 @@ pub fn init_prj(config_dir: PathBuf) -> io::Result<(Config, String)> {
     println!();
     println!("Wechsel uses a tree structure to organise your projects.");
     println!("This will now create the root project.");
-    let name = Text::new("Name of the root project")
+    let Ok(name) = Text::new("Name of the root project")
         .with_default("default")
-        .prompt()
-        .expect("No name given");
+        .prompt() else {
+            std::process::exit(1);
+        };
 
     
     let mut root_prj = prjs_path.clone();
@@ -51,11 +53,12 @@ pub fn init_prj(config_dir: PathBuf) -> io::Result<(Config, String)> {
     println!("Wechsel will now move some of your user folders to the default project.");
     println!("You should select all folders that you want any project to be able to use.");
     println!("Otherwise Wechsel cant create symlinks in your home folder.");
-    let folders = MultiSelect::new("Select folders to move to the root project", 
+    let Ok(folders) = MultiSelect::new("Select folders to move to the root project", 
             vec!["Desktop", "Downloads", "Documents", "Pictures", "Videos", "Music"])
         .with_default(&[0,1,2,3,4,5])
-        .prompt()
-        .expect("No folders selected");
+        .prompt() else {
+            std::process::exit(1);
+        };
 
     for folder in folders.iter() {
         let folder_path = match *folder {
@@ -98,7 +101,10 @@ pub fn init_prj(config_dir: PathBuf) -> io::Result<(Config, String)> {
         all_prjs: Project {
             name: name.to_owned(),
             path: prjs_path.to_str().unwrap().to_owned(),
-            folder: folders.clone().into_iter().map(|s| format!("{}/{}",name,s)).collect::<Vec<String>>(),
+            folder: folders.clone().into_iter().map(|s| {
+                let folder: PathBuf = [&name, s].iter().collect();
+                folder.to_str().expect("Could not convert to string").to_owned()
+        }).collect::<Vec<String>>(),
             children: vec![]
         }
     };
@@ -107,11 +113,12 @@ pub fn init_prj(config_dir: PathBuf) -> io::Result<(Config, String)> {
     println!();
     println!("Would you like to integrate Wechsel into your shells?");
 
-    let shells = MultiSelect::new("Select shells", 
+    let Ok(shells) = MultiSelect::new("Select shells", 
         vec!["Bash", "Fish"])
         .with_default(&[0,1])
-        .prompt()
-        .expect("Shell selection failed");
+        .prompt() else {
+            std::process::exit(1);
+        };
 
     if shells.contains(&"Bash") {
         let mut bashrc = dirs::home_dir().expect("No Home dir found");

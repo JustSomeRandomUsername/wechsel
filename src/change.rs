@@ -21,8 +21,9 @@ pub fn change_prj(name: &str, config: &mut Config, config_dir: PathBuf) -> io::R
                 path.push(v);
                 return (k.clone(), path);
             }).collect::<HashMap<String, PathBuf>>());
-
-        return (links, format!("{}/{}",p.path, child_links.1));
+        
+        let prj_path: PathBuf = [&p.path, &child_links.1].iter().collect();
+        return (links, prj_path.to_str().expect("Could not convert to string").to_owned());
     });
 
     let scripts = if let Some((map, prj_path)) = map {
@@ -66,7 +67,8 @@ pub fn change_prj(name: &str, config: &mut Config, config_dir: PathBuf) -> io::R
         
         (scripts, env_vars)
     } else {
-        (vec![], HashMap::new())
+        eprintln!("Could not find Project {}", name);
+        std::process::exit(1);
     };
         
     config.active = name.to_owned();

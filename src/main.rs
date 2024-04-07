@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 use init::init_prj;
+use inquire::{MultiSelect, Text};
 use new::new_prj;
 use serde::{Deserialize, Serialize};
 use core::panic;
@@ -69,7 +70,6 @@ struct Project {
 
 const CONFIG_NAME: &str = "wechsel_projects.json";
 
-
 fn main() {    
     let args = Args::parse();
     
@@ -123,23 +123,68 @@ fn main() {
     if let Some(cmd) = &args.command {
         match cmd {
             SubCommands::New {ref parent, ref path, ref folders} => {
-                let parent = parent.as_ref().map(|s|s.clone()).unwrap_or(config.all_prjs.name.clone());
-                let path = path.as_ref().map(|s|s.clone()).unwrap_or(prj_name.clone());
-                let folders = folders.clone().unwrap_or(vec!["Desktop".to_owned(), "Downloads".to_owned()]);
+                let (parent, path, folders) =
+                    if parent.is_none() && path.is_none() && folders.is_none() {
+                        // If no options are set, ask for them interactivly
+                        
+                        let Ok(parent) = Text::new("parent project")
+                            .with_default(&config.all_prjs.name)
+                            .prompt() else {
+                                std::process::exit(1);
+                            };
+
+                        println!("The path of project folder, either relative to the parent project or absolute");
+                        let Ok(path) = Text::new("project path")
+                            .with_default(&prj_name)
+                            .prompt() else {
+                                std::process::exit(1);
+                            };
+
+                        let Ok(folders) = MultiSelect::new("Select folders to move to the new project", 
+                            vec!["Desktop", "Downloads", "Documents", "Pictures", "Videos", "Music"])
+                            .with_default(&[0,1,2,3,4,5])
+                            .prompt() else {
+                                std::process::exit(1);
+                            };
+                            
+                        let folders: Vec<String> = folders
+                            .into_iter()
+                            .map(|folder| folder.to_owned())
+                            .collect();
+
+                        (parent, path, folders)
+                    } else {
+                        (
+                            parent.as_ref().map(|s|s.clone()).unwrap_or(config.all_prjs.name.clone()),
+                            path.as_ref().map(|s|s.clone()).unwrap_or(prj_name.clone()),
+                            folders.clone().unwrap_or(vec!["Desktop".to_owned(), "Downloads".to_owned()])
+                        )
+                    };
     
-                new_prj(&args, &mut config, &prj_name, folders, path, parent)
+                new_prj(&mut config, &prj_name, folders, path, parent)
                     .expect("Could not create new project");
             },
             SubCommands::Remove => {
-                println!("Removing Project {}, folders will not be deleted", prj_name);
-        
-                config.all_prjs.walk(&prj_name, &prj_name, |_,_| {},
-                    |p, target,_,_|{
-                    let index = p.children.iter()
-                        .position(|pr| &pr.name == target)
-                        .expect("Could not find project to remove");
-                    p.children.remove(index);
+                println!("Removing Project \"{prj_name}\", folders will not be deleted");
+                
+                let deleted = config.all_prjs.walk(&prj_name, &prj_name, |_,_| true,
+                    |p, target,_,_| {
+                    if let Some(index) =
+                        p.children.iter()
+                            .position(|pr| &pr.name == target) 
+                    {
+                        p.children.remove(index);
+                        true
+                    } else {
+                        false
+                    }
                 });
+
+                if deleted.is_some() && deleted.unwrap() {
+                    println!("Sucessfully removed project");
+                } else {
+                    eprintln!("Didnt't find project to remove");
+                }
     
                 // if the active project is removed, set the active project to the root project
                 if prj_name == config.active {
@@ -237,10 +282,10 @@ impl Project {
             return Some(gen(self, data));
         }
         let child_data = self.children.iter_mut()
-            .map(|pr| pr.walk(target, data, gen, res))
-            .find(|op| op.is_some());
+            .find_map(|pr| pr.walk(target, data, gen, res));
 
-        if let Some(child_path) = child_data.flatten() {
+        // a child is part of the target branch
+        if let Some(child_path) = child_data {
             return Some(res(self, data, child_path, gen));
         };
         None
