@@ -6,6 +6,8 @@ authors = ["JustSomeRandomUsername"]
 repository = "https://github.com/JustSomeRandomUsername/wechsel"
 readme = "README.md"
 license-file = "LICENSE"
+categories = ["command-line-utilities"]
+keywords = ["organising", "project"]
 
 [dependencies]
 clap = { version = "4.5.4", features = ["derive"] }
