@@ -32,12 +32,12 @@ pub fn change_prj(name: &str, config: &mut Config, config_dir: PathBuf) -> io::R
             let mut parking = dirs::home_dir().ok_or(io::Error::new(std::io::ErrorKind::Other, "No Home dir found"))?;
             let mut target = parking.clone();
             target.push(&name);
+            parking.push(name+"1"); 
                 
             if !path.exists() || (target.exists() && !target.is_symlink()) {
-                println!("Not found Path {:?}, target {:?} {:?}", path, parking, target);
+                println!("Could not symlink folder {:?}, target {:?} {:?}", path, parking, target);
                 continue;   
             }
-            parking.push(name+"1"); 
 
             std::os::unix::fs::symlink(&path, &parking).unwrap_or_default();
 

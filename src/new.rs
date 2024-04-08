@@ -15,7 +15,7 @@ pub fn new_prj(config: &mut Config, prj_name: &str, folders: Vec<String>, path: 
 
     //Create Project Folder
     if !new_pr_path.exists() {
-        fs::create_dir(&new_pr_path)
+        fs::create_dir_all(&new_pr_path)
            .expect(format!("Could not create project folder: {}", new_pr_path.to_str().unwrap()).as_str());
     } else {
         println!("Project Folder already exists");

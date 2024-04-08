@@ -192,27 +192,31 @@ fn main() {
                 }
             },
             SubCommands::Rename {ref new_name, ref new_path} => {
-                let (parent_path, target_path) = config.all_prjs.walk(&prj_name, &(new_name, new_path),
+                let (parent_path, old_path) = config.all_prjs.walk(&prj_name, &(new_name, new_path),
                     |p, new_data| {
+                        let old_path = p.path.clone();
                         if let Some(new_name) = new_data.0.clone() {
                             p.name = new_name;
                         }
                         if let Some(new_path) = new_data.1.clone() {
                             p.path = new_path.clone();
                         }
-                        (PathBuf::new(), p.path.clone())
+                        (PathBuf::new(), old_path)
                     },
-                    |p, _, (child_path, target_path), _| (PathBuf::from_iter(vec![PathBuf::from(&p.path), child_path]), target_path))
+                    |p, _, (child_path, old_path), _| (PathBuf::from_iter(vec![PathBuf::from(&p.path), child_path]), old_path))
                     .expect("Could not find project path");
     
                 if let Some(new_path) = new_path.as_ref() {
                     let mut to = parent_path.clone();
                     to.push(new_path);
     
-                    let mut from = parent_path;
-                    from.push(target_path);
-    
-                    fs::rename(from, to)
+                    let mut from = parent_path.clone();
+                    from.push(old_path);
+                    
+                    if !from.exists() || !from.is_dir() {
+                        eprintln!("Could not find project folder to rename");
+                    }
+                    fs::rename(&from, &to)
                         .expect("Could not rename");
                 }
                 if let Some(new_name) = new_name {
