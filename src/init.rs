@@ -2,6 +2,7 @@ use std::{fs::{self, OpenOptions}, io, path::PathBuf};
 
 use inquire::{MultiSelect, Text};
 use io::Write;
+use std::os::unix::fs::PermissionsExt;
 
 use crate::{Config, Project, CONFIG_NAME};
 
@@ -174,6 +175,67 @@ end";
             }
         }
     }
-    
+    let mut on_prj_change = config_dir.clone();
+    on_prj_change.push("on-prj-change");
+
+    if !on_prj_change.exists() {
+        println!("Creating on-prj-change script");
+
+        let default = 
+"
+#!/bin/bash
+
+#Reload Indicator
+gdbus call -e -d org.gnome.shell.extensions.prjchange -o /org/gnome/shell/extensions/prjchange/service -m org.gnome.shell.extensions.prjchange.service.Reload > /dev/null;\\
+
+#Reload Nautilus Windows
+windows=$(gdbus introspect -e -d org.gnome.Nautilus -o /org/gnome/Nautilus -r | grep -Po 'window/\\K[0-9]*')
+for i in $windows;do \\
+	gdbus call -e -d org.gnome.Nautilus -o /org/gnome/Nautilus/window/$i -m org.gtk.Actions.Activate \"@s 'reload'\" \"@av []\" \"@a{sv} {}\" > /dev/null;\\
+done	
+
+#Reload Ding Desktop Icons
+#gdbus call -e -d org.gnome.Nautilus -o /org/gnome/Nautilus/window/$i -m org.gtk.Actions.Activate \"@s 'reload'\" \"@av []\" \"@a{sv} {}\" > /dev/null;\\
+
+# Set gnome wallpapers
+# This is searching for images named wallpaper.png and wallpaper_dark.png
+# Light mode wallpaper
+#wallpaper=$PRJ_PATH/wallpaper.png
+#if [ -f $wallpaper  ]; then
+#	gsettings set org.gnome.desktop.background picture-uri file://$wallpaper
+#else
+#	gsettings set org.gnome.desktop.background picture-uri file:///usr/share/backgrounds/f38/default/f38-01-day.png
+#fi
+
+# Dark mode wallpaper
+#wallpaper=$PRJ_PATH/wallpaper_dark.png
+#if [ -f $wallpaper ]; then
+#	gsettings set org.gnome.desktop.background picture-uri-dark file://$wallpaper
+#else
+#	gsettings set org.gnome.desktop.background picture-uri-dark file:///usr/share/backgrounds/f38/default/f38-01-night.png
+#fi
+
+# Call project specific on-prj-change
+on_change=$PRJ_PATH/.on-prj-change
+if [ -f $on_change ]; then
+	$on_change
+fi";
+
+        fs::write(&on_prj_change, default)
+            .expect("Could not create on-prj-change script");
+
+        let mut permissions = fs::metadata(&on_prj_change)
+            .expect("Could not get metadata")
+            .permissions();
+
+        // Add execute permission
+        permissions.set_mode(permissions.mode() | 0b001001001);
+        fs::set_permissions(&on_prj_change, permissions)
+            .expect("Could not set permissions");
+
+    } else {
+        println!("on-prj-change folder already exists");
+    }    
+
     Ok((conf, name.to_string()))
 }

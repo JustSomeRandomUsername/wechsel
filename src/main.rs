@@ -38,7 +38,7 @@ pub enum SubCommands {
         folders: Option<Vec<String>>,
     },
     #[clap(about = "Initialize the config file and create a default project and move the folders to it")]
-    Initial,
+    Init,
     #[clap(about = "Remove a project from the config file")]
     Remove,
     #[clap(about = "Rename a project")]
@@ -88,7 +88,7 @@ fn main() {
     ].iter().collect();
 
     let (mut config, mut prj_name) =
-        if let Some(SubCommands::Initial) = args.command {
+        if let Some(SubCommands::Init) = args.command {
             let (conf, name) = init_prj(config_dir.clone()).expect("Could not create initial project");
 
             if path.exists() {
@@ -230,7 +230,7 @@ fn main() {
                 println!("{url}");
                 return;
             },
-            SubCommands::Initial => (),
+            SubCommands::Init => (),
         }
     }
     
