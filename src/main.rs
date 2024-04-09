@@ -25,6 +25,8 @@ pub struct Args {
 
 #[derive(Debug, Subcommand)]
 pub enum SubCommands {
+    #[clap(about = "[Default] Change the active project")]
+    Change,
     #[clap(about = "Create a new project")]
     New {
         /// parent project
@@ -51,7 +53,7 @@ pub enum SubCommands {
         new_path: Option<String>,
     },
     #[clap(about = "Get the path of a project")]
-    GetPath,    
+    GetPath,
 }
 
 #[derive(Default, Deserialize, Serialize, Debug)]
@@ -234,7 +236,7 @@ fn main() {
                 println!("{url}");
                 return;
             },
-            SubCommands::Init => (),
+            SubCommands::Init | SubCommands::Change => (),
         }
     }
     
