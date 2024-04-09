@@ -8,6 +8,7 @@ readme = "README.md"
 license-file = "LICENSE"
 categories = ["command-line-utilities"]
 keywords = ["organising", "project"]
+description = "Organise your Computer with projects."
 
 [dependencies]
 clap = { version = "4.5.4", features = ["derive"] }
