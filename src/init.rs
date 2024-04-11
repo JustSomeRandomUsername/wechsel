@@ -130,16 +130,7 @@ pub fn init_prj(config_dir: PathBuf) -> io::Result<(Config, String)> {
             .append(true)
             .open(bashrc)
             .unwrap();
-
-        let bash = 
-"env_vars=~/.config/wechsel/enviroment_variables.sh
-if [ -f $env_vars ]; then
-    . $env_vars
-fi
-init=$PRJ_PATH/.init-prj
-if [ -f $init ]; then
-    . $init
-fi";
+        let bash = include_str!("../config_files/default_bash_config");
 
         for line in bash.lines() {
             if let Err(e) = writeln!(file, "{}", line) {
@@ -158,17 +149,7 @@ fi";
             .open(fish_config)
             .unwrap();
 
-        let fish = 
-"if status is-interactive
-    set env_var ~/.config/wechsel/enviroment_variables.fish
-    if test -e $env_var
-        source $env_var 
-    end
-    set init $PRJ_PATH/.init-prj.fish
-    if test -e $init
-        source $init
-    end
-end";
+        let fish = include_str!("../config_files/default_fish_config");
         for line in fish.lines() {
             if let Err(e) = writeln!(file, "{}", line) {
                 eprintln!("Couldn't write to file: {}", e);
@@ -181,45 +162,7 @@ end";
     if !on_prj_change.exists() {
         println!("Creating on-prj-change script");
 
-        let default = 
-"
-#!/bin/bash
-
-#Reload Indicator
-gdbus call -e -d org.gnome.shell.extensions.prjchange -o /org/gnome/shell/extensions/prjchange/service -m org.gnome.shell.extensions.prjchange.service.Reload > /dev/null;\\
-
-#Reload Nautilus Windows
-windows=$(gdbus introspect -e -d org.gnome.Nautilus -o /org/gnome/Nautilus -r | grep -Po 'window/\\K[0-9]*')
-for i in $windows;do \\
-	gdbus call -e -d org.gnome.Nautilus -o /org/gnome/Nautilus/window/$i -m org.gtk.Actions.Activate \"@s 'reload'\" \"@av []\" \"@a{sv} {}\" > /dev/null;\\
-done	
-
-#Reload Ding Desktop Icons
-#gdbus call -e -d org.gnome.Nautilus -o /org/gnome/Nautilus/window/$i -m org.gtk.Actions.Activate \"@s 'reload'\" \"@av []\" \"@a{sv} {}\" > /dev/null;\\
-
-# Set gnome wallpapers
-# This is searching for images named wallpaper.png and wallpaper_dark.png
-# Light mode wallpaper
-#wallpaper=$PRJ_PATH/wallpaper.png
-#if [ -f $wallpaper  ]; then
-#	gsettings set org.gnome.desktop.background picture-uri file://$wallpaper
-#else
-#	gsettings set org.gnome.desktop.background picture-uri file:///usr/share/backgrounds/f38/default/f38-01-day.png
-#fi
-
-# Dark mode wallpaper
-#wallpaper=$PRJ_PATH/wallpaper_dark.png
-#if [ -f $wallpaper ]; then
-#	gsettings set org.gnome.desktop.background picture-uri-dark file://$wallpaper
-#else
-#	gsettings set org.gnome.desktop.background picture-uri-dark file:///usr/share/backgrounds/f38/default/f38-01-night.png
-#fi
-
-# Call project specific on-prj-change
-on_change=$PRJ_PATH/.on-prj-change
-if [ -f $on_change ]; then
-	$on_change
-fi";
+        let default = include_str!("../config_files/default_on_prj_change");
 
         fs::write(&on_prj_change, default)
             .expect("Could not create on-prj-change script");

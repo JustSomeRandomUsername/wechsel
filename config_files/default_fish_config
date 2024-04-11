@@ -1,0 +1,10 @@
+if status is-interactive
+    set env_var ~/.config/wechsel/enviroment_variables.fish
+    if test -e $env_var
+        source $env_var 
+    end
+    set init $PRJ_PATH/.init-prj.fish
+    if test -e $init
+        source $init
+    end
+end

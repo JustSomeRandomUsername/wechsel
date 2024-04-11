@@ -1,0 +1,8 @@
+env_vars=~/.config/wechsel/enviroment_variables.sh
+if [ -f $env_vars ]; then
+    . $env_vars
+fi
+init=$PRJ_PATH/.init-prj
+if [ -f $init ]; then
+    . $init
+fi
