@@ -1,13 +1,20 @@
 # Wechsel
 Organise your projects by replacing user folders with symlinks to project folders.
 
-Anoyed by the mess in your Download or Desktop folder?
-
-Wechsel is a simple tool that helps you by giving you an individual Download, Desktop, ... folder for each project.
+Wechsel is a simple tool that helps you by creating individual Download, Desktop, ... folders for each project.
 It replaces the original folders with symlinks to the folders of the current active project.
-Like this the random files you download, they will be placed in the Download folder they belong to.
+Like this the random files you download, will be placed in the Download folder they belong to.
 
 Additionaly each project can have init scripts that allow you to do things like automaticly sourcing python enviroments in your python projects.
+
+## How it works
+Wechsel stores all the information about your project in a config fille called ```wechsel_projects.json```.
+This file contains a tree structure of all your project.
+Every project is an entry in that tree that holds information about the project like the name of the project, the path of the project folder of the list of its children.
+
+When switching project this file is read to find out which folders are going to be symlinked and what the symlink targets should be.
+
+If a project dosnt't have a folder that a parent project does have, the folder of the parent project is used. E.g. you project ```uni``` does not have a ```Music``` folder but your root project does, then when swiching to the ```uni``` project the ```Music``` folder of the root project will be symlinked.
 
 ## Gnome
 There is an acompanying [gnome extension](https://github.com/JustSomeRandomUsername/wechsel-extension) that integrates Wechsel into the gnome shell.
