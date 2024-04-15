@@ -128,14 +128,18 @@ pub fn init_prj(config_dir: PathBuf) -> io::Result<(Config, String)> {
         let mut file = OpenOptions::new()
             .write(true)
             .append(true)
-            .open(bashrc)
-            .unwrap();
-        let bash = include_str!("../config_files/default_bash_config");
+            .open(bashrc);
 
-        for line in bash.lines() {
-            if let Err(e) = writeln!(file, "{}", line) {
-                eprintln!("Couldn't write to file: {}", e);
+        if let Ok(file) = &mut file {
+            let bash = include_str!("../config_files/default_bash_config");
+
+            for line in bash.lines() {
+                if let Err(e) = writeln!(file, "{}", line) {
+                    eprintln!("Couldn't write to file: {}", e);
+                }
             }
+        } else {
+            eprintln!("Couldn't open .bashrc, continuing without modifying it.");
         }
     }
 
@@ -146,15 +150,19 @@ pub fn init_prj(config_dir: PathBuf) -> io::Result<(Config, String)> {
         let mut file = OpenOptions::new()
             .write(true)
             .append(true)
-            .open(fish_config)
-            .unwrap();
+            .open(fish_config);
 
-        let fish = include_str!("../config_files/default_fish_config");
-        for line in fish.lines() {
-            if let Err(e) = writeln!(file, "{}", line) {
-                eprintln!("Couldn't write to file: {}", e);
+        if let Ok(file) = &mut file {
+            let fish = include_str!("../config_files/default_fish_config");
+            for line in fish.lines() {
+                if let Err(e) = writeln!(file, "{}", line) {
+                    eprintln!("Couldn't write to file: {}", e);
+                }
             }
+        } else {
+            eprintln!("Couldn't open fish config, continuing without modifying it.");
         }
+    
     }
     let mut on_prj_change = config_dir.clone();
     on_prj_change.push("on-prj-change");
