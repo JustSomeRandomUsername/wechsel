@@ -1,4 +1,4 @@
-<div align="center">
+<div>
   <!-- Crates version -->
   <a href="https://crates.io/crates/wechsel">
     <img src="https://img.shields.io/crates/v/wechsel.svg?style=flat-square"
