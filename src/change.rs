@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fs, io, path::PathBuf};
 
-use crate::Config;
+use crate::{get_path, Config};
 
 pub fn change_prj(name: &str, config: &mut Config, config_dir: PathBuf) -> io::Result<(Vec<PathBuf>, HashMap<String, String>)> {
     // Find Project Folder Urls
@@ -47,7 +47,11 @@ pub fn change_prj(name: &str, config: &mut Config, config_dir: PathBuf) -> io::R
 
         let env_vars = HashMap::from_iter(vec![
             ("PRJ".to_owned(), name.to_owned()), 
-            ("PRJ_PATH".to_owned(), prj_path.clone())
+            ("PRJ_PATH".to_owned(), prj_path.clone()),
+            ("OLD_PRJ".to_owned(), config.active.clone()),
+            ("OLD_PRJ_PATH".to_owned(), get_path(&mut config.all_prjs, &config.active)
+                .and_then(|path| path.to_str().map(|a|a.to_owned())).unwrap_or_default())
+
         ]);
         // Write Enviroment Variables for Fish
         let mut enviroment_vars = PathBuf::from(&config_dir);

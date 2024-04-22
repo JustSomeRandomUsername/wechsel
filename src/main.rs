@@ -161,9 +161,7 @@ fn main() {
                             };
 
                         let path = 
-                            config.all_prjs.walk(&config.active, &(),
-                            |p, _| PathBuf::from(&p.path),
-                            |p, _, child_path, _| PathBuf::from_iter(vec![PathBuf::from(&p.path), child_path]))
+                            get_path(&mut config.all_prjs, &config.active)
                                 .and_then(|url| 
                                     std::env::current_dir().ok().and_then(|mut cur| {
                                         cur.push(PathBuf::from(project_name));
@@ -277,9 +275,7 @@ fn main() {
                 }
             },
             Command::GetPath{project_name} => {
-                let url = config.all_prjs.walk(&project_name, &(),
-                    |p, _| PathBuf::from(&p.path),
-                    |p, _, child_path, _| PathBuf::from_iter(vec![PathBuf::from(&p.path), child_path]))
+                let url = get_path(&mut config.all_prjs, project_name)
                     .expect("Could not find project path");
                 let Some(url) = url.to_str() else {
                     panic!("Could not convert path to string");
@@ -351,4 +347,11 @@ impl Project {
         };
         None
     }
+}
+
+
+fn get_path(all_prjs: &mut Project, name: &String) -> Option<PathBuf> {
+    all_prjs.walk(name, &(),
+        |p, _| PathBuf::from(&p.path), 
+        |p, _, child_path, _| [PathBuf::from(&p.path), child_path].iter().collect())
 }

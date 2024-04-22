@@ -1,13 +1,11 @@
 use std::{fs, io, path::PathBuf};
-use crate::{Config, Project};
+use crate::{get_path, Config, Project};
 
 pub fn new_prj(config: &mut Config, prj_name: &str, folders: Vec<String>, path: String, parent: String) -> io::Result<()> {
     println!("Creating Project {:?}", prj_name);
         
     //get parent url
-    let parent_url = config.all_prjs.walk(&parent, &(),
-        |p, _| PathBuf::from(&p.path), 
-        |p, _, child_path, _| [PathBuf::from(&p.path), child_path].iter().collect())
+    let parent_url = get_path(&mut config.all_prjs, &parent)
         .expect("Could not find parent path");
 
     let mut new_pr_path = PathBuf::from(&parent_url);
