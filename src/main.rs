@@ -1,7 +1,8 @@
 use clap::{Parser, Subcommand};
 use init::init_prj;
-use inquire::{MultiSelect, Text};
+use inquire::{Confirm, MultiSelect, Text};
 use new::new_prj;
+use pathdiff::diff_paths;
 use serde::{Deserialize, Serialize};
 use core::panic;
 use std::collections::HashMap;
@@ -18,17 +19,23 @@ mod init;
 #[command(author, version, about, long_about = None)]
 pub struct Args {
     #[clap(subcommand)]
-    command: Option<SubCommands>,
+    command: Option<Command>,
 
     project_name: Option<String>,
 }
 
 #[derive(Debug, Subcommand)]
-pub enum SubCommands {
-    #[clap(about = "[Default] Change the active project")]
-    Change,
-    #[clap(about = "Create a new project")]
+pub enum Command {
+    #[clap(about = "[Default] Change the active project.")]
+    Change {
+        /// project to change to
+        project_name: String
+    },
+    #[clap(about = "Create a new project.")]
     New {
+        /// Name of the new project
+        project_name: String,
+
         /// parent project
         #[clap(short, long)]
         parent: Option<String>,
@@ -39,12 +46,22 @@ pub enum SubCommands {
         #[clap(long, value_parser, num_args = 1.., value_delimiter = ' ')]
         folders: Option<Vec<String>>,
     },
-    #[clap(about = "Initialize the config file and create a default project and move the folders to it")]
+    #[clap(about = "Initialize the config file and create a default project and move the folders to it.")]
     Init,
-    #[clap(about = "Remove a project from the config file")]
-    Remove,
+    #[clap(about = "Remove a project from the config file. This won't delete any of the projects files.")]
+    Remove {
+        /// Name of the project to remove
+        project_name: String,
+
+        /// Assume Yes for all questions
+        #[clap(short='y', long, action)]
+        assumeyes: bool,
+    },
     #[clap(about = "Rename a project")]
     Rename {
+        /// name of the target project (old name)
+        project_name: String,
+
         /// new name of the project
         #[clap(long)]
         new_name: Option<String>,
@@ -52,8 +69,11 @@ pub enum SubCommands {
         #[clap(long)]
         new_path: Option<String>,
     },
-    #[clap(about = "Get the path of a project")]
-    GetPath,
+    #[clap(about = "Get the path of a project.")]
+    GetPath {
+        /// Name of the project to get the path for
+        project_name: String
+    },
 }
 
 #[derive(Default, Deserialize, Serialize, Debug)]
@@ -89,8 +109,9 @@ fn main() {
         PathBuf::from(CONFIG_NAME)
     ].iter().collect();
 
+    // Check if Init is selected
     let (mut config, mut prj_name) =
-        if let Some(SubCommands::Init) = args.command {
+        if let Some(Command::Init) = args.command {
             let (conf, name) = init_prj(config_dir.clone()).expect("Could not create initial project");
 
             if path.exists() {
@@ -103,6 +124,10 @@ fn main() {
             (None, None)
         };
     
+    if prj_name.is_none() && args.project_name.is_some() {
+        prj_name = args.project_name;
+    }
+    // Load config if Init was not the command
     if config.is_none() {
         // Load Config
         if !path.exists() {
@@ -112,32 +137,44 @@ fn main() {
            .expect("Should have been able to read the file");
 
         config = serde_json::from_str(&contents).expect("JSON was not well-formatted");
-        prj_name = args.project_name.as_ref().cloned();
     }
 
-    let mut config = config.unwrap();
-    
-    if prj_name.is_none() {
-        eprintln!("No project name given");
-        std::process::exit(1);
-    }
-    let mut prj_name = prj_name.unwrap();
+    let mut config = config.unwrap();    
+
     if let Some(cmd) = &args.command {
         match cmd {
-            SubCommands::New {ref parent, ref path, ref folders} => {
+            Command::New {
+                project_name,
+                parent, 
+                path, 
+                folders
+            } => {
+                prj_name = Some(project_name.clone());
                 let (parent, path, folders) =
                     if parent.is_none() && path.is_none() && folders.is_none() {
                         // If no options are set, ask for them interactivly
                         
                         let Ok(parent) = Text::new("parent project")
-                            .with_default(&config.all_prjs.name)
+                            .with_default(&config.active)
                             .prompt() else {
                                 std::process::exit(1);
                             };
 
+                        let path = 
+                            config.all_prjs.walk(&config.active, &(),
+                            |p, _| PathBuf::from(&p.path),
+                            |p, _, child_path, _| PathBuf::from_iter(vec![PathBuf::from(&p.path), child_path]))
+                                .and_then(|url| 
+                                    std::env::current_dir().ok().and_then(|mut cur| {
+                                        cur.push(PathBuf::from(project_name));
+                                        diff_paths(cur, url)
+                                    })
+                                )
+                                .unwrap_or(PathBuf::from(project_name));
+
                         println!("The path of project folder, either relative to the parent project or absolute");
                         let Ok(path) = Text::new("project path")
-                            .with_default(&prj_name)
+                            .with_default(path.to_str().unwrap_or(&project_name))
                             .prompt() else {
                                 std::process::exit(1);
                             };
@@ -158,18 +195,26 @@ fn main() {
                     } else {
                         (
                             parent.as_ref().map(|s|s.clone()).unwrap_or(config.all_prjs.name.clone()),
-                            path.as_ref().map(|s|s.clone()).unwrap_or(prj_name.clone()),
+                            path.as_ref().map(|s|s.clone()).unwrap_or(project_name.clone()),
                             folders.clone().unwrap_or(vec!["Desktop".to_owned(), "Downloads".to_owned()])
                         )
                     };
     
-                new_prj(&mut config, &prj_name, folders, path, parent)
+                new_prj(&mut config, &project_name, folders, path, parent)
                     .expect("Could not create new project");
             },
-            SubCommands::Remove => {
-                println!("Removing Project \"{prj_name}\", folders will not be deleted");
+            Command::Remove {project_name, assumeyes} => {
+                println!("Removing Project \"{project_name}\", files will not be deleted.");
+                println!("This will just remove this project and its children from the wechsel config.");
                 
-                let deleted = config.all_prjs.walk(&prj_name, &prj_name, |_,_| true,
+                if !assumeyes &&
+                    !Confirm::new(&format!("Are you sure you want to remove \"{project_name}\""))
+                        .with_default(false)
+                        .prompt().unwrap_or_default() {
+                            println!("Exiting, will not remove anything");
+                            std::process::exit(1);
+                        }
+                let deleted = config.all_prjs.walk(project_name, project_name, |_,_| true,
                     |p, target,_,_| {
                     if let Some(index) =
                         p.children.iter()
@@ -189,12 +234,18 @@ fn main() {
                 }
     
                 // if the active project is removed, set the active project to the root project
-                if prj_name == config.active {
-                    prj_name = config.all_prjs.name.clone();
+                if project_name == &config.active {
+                    prj_name = Some(config.all_prjs.name.clone());
+                } else {
+                    prj_name = Some(project_name.clone());
                 }
             },
-            SubCommands::Rename {ref new_name, ref new_path} => {
-                let (parent_path, old_path) = config.all_prjs.walk(&prj_name, &(new_name, new_path),
+            Command::Rename {
+                project_name,
+                new_name,
+                new_path
+            } => {
+                let (parent_path, old_path) = config.all_prjs.walk(&project_name, &(new_name, new_path),
                     |p, new_data| {
                         let old_path = p.path.clone();
                         if let Some(new_name) = new_data.0.clone() {
@@ -222,11 +273,11 @@ fn main() {
                         .expect("Could not rename");
                 }
                 if let Some(new_name) = new_name {
-                    prj_name = new_name.clone();
+                    prj_name = Some(new_name.clone());
                 }
             },
-            SubCommands::GetPath => {
-                let url = config.all_prjs.walk(&prj_name, &(),
+            Command::GetPath{project_name} => {
+                let url = config.all_prjs.walk(&project_name, &(),
                     |p, _| PathBuf::from(&p.path),
                     |p, _, child_path, _| PathBuf::from_iter(vec![PathBuf::from(&p.path), child_path]))
                     .expect("Could not find project path");
@@ -234,12 +285,16 @@ fn main() {
                     panic!("Could not convert path to string");
                 };
                 println!("{url}");
-                return;
             },
-            SubCommands::Init | SubCommands::Change => (),
+            Command::Change {project_name} => prj_name = Some(project_name.clone()),
+            Command::Init => (),
         }
     }
     
+    let Some(prj_name) = prj_name else {
+        std::process::exit(1);
+    };
+
     //Change Project
     let after_scripts =
         match change_prj(&prj_name, &mut config, config_dir) {

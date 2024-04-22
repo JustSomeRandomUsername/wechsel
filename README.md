@@ -7,7 +7,7 @@
 </div>
 
 # Wechsel
-Organise your projects by replacing user folders with symlinks to project folders.
+Organise your computer by replacing user folders with symlinks to project folders.
 
 Wechsel is a simple tool that helps you by creating individual Download, Desktop, ... folders for each project.
 It replaces the original folders with symlinks to the folders of the current active project.
