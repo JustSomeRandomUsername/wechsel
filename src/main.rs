@@ -212,28 +212,33 @@ fn main() {
                             println!("Exiting, will not remove anything");
                             std::process::exit(1);
                         }
-                let deleted = config.all_prjs.walk(project_name, project_name, |_,_| true,
-                    |p, target,_,_| {
+                let deleted = config.all_prjs.walk(project_name, project_name, |_,_| None,
+                    |p, target, child_res,_| {
                     if let Some(index) =
                         p.children.iter()
                             .position(|pr| &pr.name == target) 
                     {
                         p.children.remove(index);
-                        true
+                        Some(p.name.clone())
                     } else {
-                        false
+                        child_res
                     }
-                });
+                }).flatten();
 
-                if deleted.is_some() && deleted.unwrap() {
+                if deleted.is_some() && deleted.is_some() {
                     println!("Sucessfully removed project");
                 } else {
                     eprintln!("Didnt't find project to remove");
                 }
-    
+                
+                
                 // if the active project is removed, set the active project to the root project
                 if project_name == &config.active {
-                    prj_name = Some(config.all_prjs.name.clone());
+                    prj_name = if let Some(del) = deleted {
+                        Some(del)
+                    } else {
+                        Some(config.all_prjs.name.clone())
+                    }
                 } else {
                     prj_name = Some(project_name.clone());
                 }
