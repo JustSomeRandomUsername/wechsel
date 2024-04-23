@@ -212,36 +212,58 @@ fn main() {
                             println!("Exiting, will not remove anything");
                             std::process::exit(1);
                         }
-                let deleted = config.all_prjs.walk(project_name, project_name, |_,_| None,
+                
+                // all_prjs.walk(name, &(),
+                // |p, _| PathBuf::from(&p.path), 
+                // |p, _, child_path, _| [PathBuf::from(&p.path), child_path].iter().collect())
+
+                let deleted = config.all_prjs.walk(project_name, project_name, 
+                    |p, _| (None, PathBuf::from(&p.path)),
                     |p, target, child_res,_| {
-                    if let Some(index) =
+                    let parent_name = if let Some(index) =
                         p.children.iter()
-                            .position(|pr| &pr.name == target) 
+                            .position(|pr| &pr.name == target)
                     {
                         p.children.remove(index);
                         Some(p.name.clone())
                     } else {
-                        child_res
-                    }
-                }).flatten();
+                        child_res.0
+                    };
+                    (parent_name, [PathBuf::from(&p.path), child_res.1].iter().collect())
+                });
 
-                if deleted.is_some() && deleted.is_some() {
-                    println!("Sucessfully removed project");
-                } else {
+                let Some((Some(parent_name), del_path)) = deleted else {
                     eprintln!("Didnt't find project to remove");
-                }
+                    std::process::exit(1);
+                };
+                println!("Sucessfully removed project");
                 
                 
-                // if the active project is removed, set the active project to the root project
-                if project_name == &config.active {
-                    prj_name = if let Some(del) = deleted {
-                        Some(del)
-                    } else {
-                        Some(config.all_prjs.name.clone())
+                
+                // Call on remove script
+                let mut script = PathBuf::from(&config_dir);
+                script.push("on-prj-remove");
+                if script.is_file() {
+                    let env_vars: HashMap<String, String> = HashMap::from_iter(vec![
+                        ("PRJ".to_owned(), project_name.to_owned()), 
+                        ("PRJ_PATH".to_owned(), del_path.to_str().unwrap_or_default().to_owned()),
+                    ]);
+                    if let Ok(mut child) = std::process::Command::new("sh")
+                        .envs(env_vars)
+                        .arg("-c")
+                        .arg(&script)
+                        .current_dir(del_path)
+                        .spawn() {
+                            let _ = child.wait();
                     }
-                } else {
-                    prj_name = Some(project_name.clone());
                 }
+
+                // if the active project is removed, set the active project to the removed projects parent
+                prj_name = if project_name == &config.active {
+                    Some(parent_name)
+                } else {
+                    None//Don't change the active project
+                };
             },
             Command::Rename {
                 project_name,
@@ -292,22 +314,24 @@ fn main() {
         }
     }
     
-    let Some(prj_name) = prj_name else {
-        std::process::exit(1);
-    };
-
-    //Change Project
     let after_scripts =
-        match change_prj(&prj_name, &mut config, config_dir) {
-            Ok(after_scripts) => {
-                println!("Changed to Project {}", prj_name);
-                Some(after_scripts)
-            },
-            Err(e) => {
-                println!("Could not change to Project {}, Error: {}", prj_name, e);
-                None
+        if let Some(prj_name) = prj_name {
+            //Change Project
+            match change_prj(&prj_name, &mut config, config_dir) {
+                Ok(after_scripts) => {
+                    println!("Changed to Project {}", prj_name);
+                    Some(after_scripts)
+                },
+                Err(e) => {
+                    println!("Could not change to Project {}, Error: {}", prj_name, e);
+                    None
+                }
             }
+        } else {
+            // Don't change the active project
+            None
         };
+
 
     //Write Config to json
     std::fs::write(&path,serde_json::to_string_pretty(&config).unwrap())
