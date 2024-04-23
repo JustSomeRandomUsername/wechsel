@@ -51,7 +51,6 @@ pub fn change_prj(name: &str, config: &mut Config, config_dir: PathBuf) -> io::R
             ("OLD_PRJ".to_owned(), config.active.clone()),
             ("OLD_PRJ_PATH".to_owned(), get_path(&mut config.all_prjs, &config.active)
                 .and_then(|path| path.to_str().map(|a|a.to_owned())).unwrap_or_default())
-
         ]);
         // Write Enviroment Variables for Fish
         let mut enviroment_vars = PathBuf::from(&config_dir);

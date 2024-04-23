@@ -198,7 +198,7 @@ fn main() {
                         )
                     };
     
-                new_prj(&mut config, &project_name, folders, path, parent)
+                new_prj(&mut config, &project_name, folders, path, parent, &config_dir)
                     .expect("Could not create new project");
             },
             Command::Remove {project_name, assumeyes} => {
