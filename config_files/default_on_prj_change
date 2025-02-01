@@ -3,11 +3,6 @@
 #Reload Indicator
 gdbus call -e -d org.gnome.shell.extensions.wechsel -o /org/gnome/shell/extensions/wechsel/service -m org.gnome.shell.extensions.wechsel.service.Reload > /dev/null;\
 
-#Reload Nautilus Windows
-windows=$(gdbus introspect -e -d org.gnome.Nautilus -o /org/gnome/Nautilus -r | grep -Po 'window/\K[0-9]*')
-for i in $windows;do \
-        gdbus call -e -d org.gnome.Nautilus -o /org/gnome/Nautilus/window/$i -m org.gtk.Actions.Activate "@s 'reload'" "@av []" "@a{sv} {}" > /dev/null;\
-done    
 
 #Reload Ding Desktop Icons
 #gdbus call -e -d org.gnome.Nautilus -o /org/gnome/Nautilus/window/$i -m org.gtk.Actions.Activate "@s 'reload'" "@av []" "@a{sv} {}" > /dev/null;\
