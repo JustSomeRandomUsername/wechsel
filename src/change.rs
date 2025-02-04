@@ -1,21 +1,18 @@
-use std::{
-    collections::HashMap,
-    fs, io,
-    path::{Path, PathBuf},
-};
+use std::{collections::HashMap, fs, io, path::PathBuf};
 
 use crate::{
-    utils::{get_folders, search_for_project},
+    utils::{get_folders, path_from_iter, search_for_project},
     Config, FOLDER_PREFIX,
 };
 
 fn link_folder(path: &PathBuf, target_name: &str) -> io::Result<bool> {
-    let mut target = dirs::home_dir().ok_or(io::Error::new(
-        std::io::ErrorKind::Other,
-        "No Home dir found",
-    ))?;
-
-    target.push(target_name);
+    let target = path_from_iter([
+        dirs::home_dir().ok_or(io::Error::new(
+            std::io::ErrorKind::Other,
+            "No Home dir found",
+        ))?,
+        PathBuf::from(target_name),
+    ]);
 
     if !path.exists() || (target.exists() && !target.is_symlink()) {
         println!(
@@ -86,26 +83,25 @@ pub fn change_prj(
     }
 
     // Write Enviroment Variables for Fish
-    let mut enviroment_vars = PathBuf::from(&config_dir);
-    enviroment_vars.push("enviroment_variables.fish");
+    let enviroment_vars =
+        path_from_iter([&config_dir, &PathBuf::from("enviroment_variables.fish")]);
     fs::write(
         enviroment_vars,
         format!("set -x PRJ {prj_name}\nset -x PRJ_PATH {prj_path}"),
     )?;
 
     // Write Enviroment Variables for Bash
-    let mut enviroment_vars = PathBuf::from(&config_dir);
-    enviroment_vars.push("enviroment_variables.sh");
+    let enviroment_vars = path_from_iter([&config_dir, &PathBuf::from("enviroment_variables.sh")]);
     fs::write(
         enviroment_vars,
         format!("export PRJ={prj_name}\nexport PRJ_PATH={prj_path}"),
     )?;
 
-    let mut scripts = vec![];
     // Global on change script .config/on-prj-change
-    let mut script = PathBuf::from(&config_dir);
-    script.push("on-prj-change");
-    scripts.push(script);
+    let scripts = vec![path_from_iter([
+        &config_dir,
+        &PathBuf::from("on-prj-change"),
+    ])];
 
     config.active = prj_name.to_owned();
     Ok((scripts, env_vars))

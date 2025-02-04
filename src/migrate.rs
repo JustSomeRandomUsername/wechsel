@@ -9,8 +9,10 @@ use crate::{utils::path_from_iter, Config, OldConfig, OldProject, FOLDER_PREFIX,
 pub fn migrate_to_new_config(old: OldConfig) -> Config {
     println!("Migrating to new Wechsel setup");
 
-    let mut new_base_folder = dirs::home_dir().expect("Could not find home directory");
-    new_base_folder.push(&old.all_prjs.name);
+    let new_base_folder = path_from_iter([
+        dirs::home_dir().expect("Could not find home directory"),
+        PathBuf::from(&old.all_prjs.name),
+    ]);
     let old_root_folder = PathBuf::from(&old.all_prjs.path);
 
     if !new_base_folder.exists() || !new_base_folder.is_dir() {
@@ -22,19 +24,16 @@ pub fn migrate_to_new_config(old: OldConfig) -> Config {
     }
 
     fn recurse(prj: &OldProject, path: PathBuf) {
-        let mut new_path = path.clone();
+        let new_path = path_from_iter([path.clone(), PathBuf::from(PROJECTS_FOLDER)]);
 
-        new_path.push(PROJECTS_FOLDER);
         if !new_path.exists() || !new_path.is_dir() {
             fs::create_dir(&new_path)
                 .unwrap_or_else(|e| panic!("Could not create projects folder: {new_path:?} {}", e));
         }
 
         for child in &prj.children {
-            let mut child_path = path.clone();
-            child_path.push(&child.path);
-            let mut new_child_path = new_path.clone();
-            new_child_path.push(&child.name);
+            let child_path = path_from_iter([path.clone(), PathBuf::from(&child.path)]);
+            let new_child_path = path_from_iter([new_path.clone(), PathBuf::from(&child.name)]);
 
             if let Err(e) = std::os::unix::fs::symlink(&child_path, &new_child_path) {
                 if !matches!(e.kind(), ErrorKind::AlreadyExists) {
@@ -51,8 +50,11 @@ pub fn migrate_to_new_config(old: OldConfig) -> Config {
                 continue;
             }
             let mut folder_path = PathBuf::from(&path);
-            let mut new_folder_path = folder_path.clone();
-            new_folder_path.push(format!("{FOLDER_PREFIX}{folder}"));
+            let new_folder_path = path_from_iter([
+                folder_path.clone(),
+                PathBuf::from(format!("{FOLDER_PREFIX}{folder}")),
+            ]);
+
             if !new_folder_path.exists() {
                 folder_path.push(folder);
                 if let Err(e) = fs::rename(&folder_path, &new_folder_path) {

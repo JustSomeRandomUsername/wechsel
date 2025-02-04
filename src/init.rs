@@ -115,8 +115,10 @@ pub fn init_prj(config_dir: PathBuf) -> io::Result<Config> {
     };
 
     if shells.contains(&"Bash") {
-        let mut bashrc = dirs::home_dir().expect("No Home dir found");
-        bashrc.push(".bashrc");
+        let bashrc = path_from_iter([
+            dirs::home_dir().expect("No Home dir found"),
+            PathBuf::from(".bashrc"),
+        ]);
 
         let mut file = OpenOptions::new().append(true).open(bashrc);
 
@@ -134,8 +136,10 @@ pub fn init_prj(config_dir: PathBuf) -> io::Result<Config> {
     }
 
     if shells.contains(&"Fish") {
-        let mut fish_config = dirs::config_dir().expect("No Home dir found");
-        fish_config.push("fish/config.fish");
+        let fish_config = path_from_iter([
+            dirs::config_dir().expect("No Home dir found"),
+            PathBuf::from("fish/config.fish"),
+        ]);
 
         let mut file = OpenOptions::new().append(true).open(fish_config);
 
@@ -150,8 +154,7 @@ pub fn init_prj(config_dir: PathBuf) -> io::Result<Config> {
             eprintln!("Couldn't open fish config, continuing without modifying it.");
         }
     }
-    let mut on_prj_change = config_dir.clone();
-    on_prj_change.push("on-prj-change");
+    let on_prj_change = path_from_iter([config_dir.clone(), PathBuf::from("on-prj-change")]);
 
     if !on_prj_change.exists() {
         println!("Creating on-prj-change script");
