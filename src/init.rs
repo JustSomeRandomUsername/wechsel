@@ -10,11 +10,11 @@ use std::os::unix::fs::PermissionsExt;
 
 use crate::{
     utils::{path_from_iter, HOME_FOLDERS},
-    Config, CONFIG_NAME, FOLDER_PREFIX,
+    WECHSEL_FOLDER_EXTENSION,
 };
 
-pub fn init_prj(config_dir: PathBuf) -> io::Result<Config> {
-    println!("Wechsel uses a tree structure to organise your projects.");
+pub fn init_prj(config_dir: PathBuf) -> String {
+    println!("Wechsel uses a tree structure to organize your projects.");
     let Ok(root_prj_name) = Text::new("Name of the root project")
         .with_default("home")
         .prompt()
@@ -26,7 +26,7 @@ pub fn init_prj(config_dir: PathBuf) -> io::Result<Config> {
 
     println!("Next you need to decide where you would like your root project to be located.");
     println!("By default it will be created in your home directory.");
-    let Ok(prjs_path) = Text::new("projects folder path")
+    let Ok(projects_path) = Text::new("projects folder path")
         .with_default(
             dirs::home_dir()
                 .and_then(|a| a.to_str().map(|a| a.to_string()))
@@ -37,7 +37,7 @@ pub fn init_prj(config_dir: PathBuf) -> io::Result<Config> {
     else {
         std::process::exit(1);
     };
-    let prj_path = path_from_iter([prjs_path, root_prj_name]);
+    let prj_path = path_from_iter([projects_path, root_prj_name]);
 
     if !prj_path.exists() {
         println!("Creating root project folder");
@@ -72,12 +72,8 @@ pub fn init_prj(config_dir: PathBuf) -> io::Result<Config> {
         };
 
         let folder_path_buf = PathBuf::from(folder);
-        let target = path_from_iter([&prj_path, &folder_path_buf]).with_file_name(
-            folder_path_buf
-                .file_name()
-                .map(|name| format!("{FOLDER_PREFIX}{name:?}"))
-                .unwrap_or_default(),
-        );
+        let target =
+            path_from_iter([&prj_path, &folder_path_buf]).with_extension(WECHSEL_FOLDER_EXTENSION);
 
         if !folder_path.is_dir() {
             println!("Folder {folder:?} does not exist or isn't a directory");
@@ -94,14 +90,6 @@ pub fn init_prj(config_dir: PathBuf) -> io::Result<Config> {
             eprintln!("Could not move folder: {folder_path:?}, ignoring it");
         }
     }
-
-    let config_path = path_from_iter([config_dir.clone(), PathBuf::from(CONFIG_NAME)]);
-    println!("Wechsel will now create a settings file in at {config_path:?}");
-
-    let conf = Config {
-        active: String::new(),
-        base_folder: prj_path,
-    };
 
     println!("Wechsel is now ready to use.");
     println!();
@@ -173,6 +161,5 @@ pub fn init_prj(config_dir: PathBuf) -> io::Result<Config> {
     } else {
         println!("on-prj-change folder already exists");
     }
-
-    Ok(conf)
+    "home".to_string()
 }

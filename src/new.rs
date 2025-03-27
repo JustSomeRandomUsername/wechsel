@@ -1,11 +1,9 @@
 use crate::{
-    utils::{path_from_iter, search_for_project},
-    Config, FOLDER_PREFIX, PROJECTS_FOLDER,
+    tree::search_for_projects, utils::path_from_iter, PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION,
 };
 use std::{collections::HashMap, fs, io, path::PathBuf};
 
 pub fn new_prj(
-    config: &mut Config,
     prj_name: &str,
     folders: Vec<String>,
     parent: String,
@@ -14,16 +12,18 @@ pub fn new_prj(
     println!("Creating Project {:?}", prj_name);
 
     //get parent path
-    let mut parent_path =
-        search_for_project(config.base_folder.clone(), &parent).unwrap_or_else(|| {
+    let [parent_path] = search_for_projects([&parent]);
+    let parent_path = &parent_path
+        .as_ref()
+        .unwrap_or_else(|| {
             eprintln!("The given parent project could not be found");
             std::process::exit(1);
-        });
+        })
+        .path;
 
     let mut new_pr_path = path_from_iter([
-        parent_path.remove(0),
-        PathBuf::from(PROJECTS_FOLDER),
-        PathBuf::from(prj_name),
+        parent_path,
+        &PathBuf::from(format!("{prj_name}.{PROJECT_EXTENSION}")),
     ]);
 
     // Create Project Folder
@@ -36,7 +36,7 @@ pub fn new_prj(
 
     // Create Subfolders
     for subfolder in folders.iter() {
-        new_pr_path.push(format!("{FOLDER_PREFIX}{subfolder}"));
+        new_pr_path.push(format!("{subfolder}.{WECHSEL_FOLDER_EXTENSION}"));
 
         if !new_pr_path.exists() {
             fs::create_dir(&new_pr_path).unwrap_or_else(|e| {
@@ -52,8 +52,7 @@ pub fn new_prj(
     }
 
     // Call on create script
-    let mut script = PathBuf::from(config_dir);
-    script.push("on-prj-create");
+    let script = path_from_iter([config_dir, &PathBuf::from("on-prj-create")]);
     if script.is_file() {
         let env_vars: HashMap<String, String> = HashMap::from_iter(vec![
             ("PRJ".to_owned(), prj_name.to_owned()),
@@ -66,7 +65,7 @@ pub fn new_prj(
             .envs(env_vars)
             .arg("-c")
             .arg(&script)
-            .current_dir(new_pr_path)
+            .current_dir(&new_pr_path)
             .spawn()
         {
             let _ = child.wait();

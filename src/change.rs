@@ -1,8 +1,8 @@
-use std::{collections::HashMap, fs, io, path::PathBuf};
+use std::{collections::HashMap, fs, io, path::PathBuf, vec};
 
 use crate::{
-    utils::{get_folders, path_from_iter, search_for_project},
-    Config, FOLDER_PREFIX,
+    tree::search_for_projects,
+    utils::{get_folders, path_from_iter, query_active_project},
 };
 
 fn link_folder(path: &PathBuf, target_name: &str) -> io::Result<bool> {
@@ -31,29 +31,32 @@ fn link_folder(path: &PathBuf, target_name: &str) -> io::Result<bool> {
     Ok(true)
 }
 
-pub fn change_prj(
-    prj_name: &str,
-    config: &mut Config,
-    config_dir: PathBuf,
-) -> io::Result<(Vec<PathBuf>, HashMap<String, String>)> {
+pub fn change_prj(prj_name: &str, config_dir: PathBuf) -> io::Result<()> {
     // Find Project Folder Urls
 
-    let Some(prj_path) = search_for_project(config.base_folder.clone(), prj_name) else {
+    let active = query_active_project().unwrap_or_default();
+
+    let [prj_path, old_prj_path] = search_for_projects([prj_name, active.as_str()]);
+
+    let Some(prj_path) = prj_path else {
         eprintln!("Could not find Project {}", prj_name);
         std::process::exit(1);
     };
+    link_folder(&prj_path.path, "Project")?;
 
-    link_folder(&prj_path[0], "Project")?;
+    let prj_path_string = prj_path.path.to_str().unwrap_or_default().to_string();
 
     // Link Folders
+    let mut prj = Some(prj_path);
     let mut linked_folders = vec![];
-    for level in prj_path.iter() {
-        for path in get_folders(level) {
+    loop {
+        let Some(p) = prj else { break };
+        for path in get_folders(&p.path) {
             let Some(clean_name) = path
                 .file_stem()
                 .unwrap()
                 .to_str()
-                .map(|name| name.to_string().replace(FOLDER_PREFIX, ""))
+                .map(|name| name.to_string())
             else {
                 continue;
             };
@@ -67,42 +70,48 @@ pub fn change_prj(
 
             linked_folders.push(clean_name);
         }
+        prj = p.parent.clone();
     }
 
-    let prj_path = prj_path[0].to_str().unwrap_or_default().to_string();
-
-    let mut env_vars = HashMap::from_iter(vec![
+    let mut env_vars: HashMap<String, String> = HashMap::from_iter(vec![
         ("PRJ".to_owned(), prj_name.to_owned()),
-        ("PRJ_PATH".to_owned(), prj_path.clone()),
-        ("OLD_PRJ".to_owned(), config.active.clone()),
+        ("PRJ_PATH".to_owned(), prj_path_string.clone()),
+        ("OLD_PRJ".to_owned(), active.clone()),
     ]);
 
-    if let Some(old_prj_path) = search_for_project(config.base_folder.clone(), &config.active) {
-        let old_prj_path = old_prj_path[0].to_str().unwrap_or_default().to_string();
+    if let Some(old_prj_path) = old_prj_path {
+        let old_prj_path = old_prj_path.path.to_str().unwrap_or_default().to_string();
         env_vars.insert("OLD_PRJ_PATH".to_owned(), old_prj_path);
     }
 
-    // Write Enviroment Variables for Fish
-    let enviroment_vars =
-        path_from_iter([&config_dir, &PathBuf::from("enviroment_variables.fish")]);
+    // Write Environment Variables for Fish
+    let environment_vars =
+        path_from_iter([&config_dir, &PathBuf::from("environment_variables.fish")]);
     fs::write(
-        enviroment_vars,
-        format!("set -x PRJ {prj_name}\nset -x PRJ_PATH {prj_path}"),
+        environment_vars,
+        format!("set -x PRJ {prj_name}\nset -x PRJ_PATH {prj_path_string}"),
     )?;
 
-    // Write Enviroment Variables for Bash
-    let enviroment_vars = path_from_iter([&config_dir, &PathBuf::from("enviroment_variables.sh")]);
+    // Write Environment Variables for Bash
+    let environment_vars =
+        path_from_iter([&config_dir, &PathBuf::from("environment_variables.sh")]);
     fs::write(
-        enviroment_vars,
-        format!("export PRJ={prj_name}\nexport PRJ_PATH={prj_path}"),
+        environment_vars,
+        format!("export PRJ={prj_name}\nexport PRJ_PATH={prj_path_string}"),
     )?;
 
     // Global on change script .config/on-prj-change
-    let scripts = vec![path_from_iter([
-        &config_dir,
-        &PathBuf::from("on-prj-change"),
-    ])];
+    let on_change = path_from_iter([&config_dir, &PathBuf::from("on-prj-change")]);
 
-    config.active = prj_name.to_owned();
-    Ok((scripts, env_vars))
+    if on_change.is_file() {
+        if let Ok(mut child) = std::process::Command::new("sh")
+            .envs(env_vars)
+            .arg("-c")
+            .arg(&on_change)
+            .spawn()
+        {
+            let _ = child.wait();
+        }
+    }
+    Ok(())
 }
