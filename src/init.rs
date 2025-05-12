@@ -4,76 +4,110 @@ use std::{
     path::PathBuf,
 };
 
-use inquire::{MultiSelect, Text};
+use inquire::MultiSelect;
 use io::Write;
 use std::os::unix::fs::PermissionsExt;
 
 use crate::{
-    utils::{path_from_iter, HOME_FOLDERS},
-    WECHSEL_FOLDER_EXTENSION,
+    PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION,
+    utils::{get_home_folder_paths, path_from_iter},
 };
 
-pub fn init_prj(config_dir: PathBuf) -> String {
-    println!("Wechsel uses a tree structure to organize your projects.");
-    let Ok(root_prj_name) = Text::new("Name of the root project")
-        .with_default("home")
-        .prompt()
-    else {
-        std::process::exit(1);
-    };
+pub const DEFAULT_ROOT_PRJ: &str = "home";
 
-    println!();
+pub fn bashrc_path() -> PathBuf {
+    path_from_iter([
+        dirs::home_dir().expect("No Home dir found"),
+        PathBuf::from(".bashrc"),
+    ])
+}
 
-    println!("Next you need to decide where you would like your root project to be located.");
-    println!("By default it will be created in your home directory.");
-    let Ok(projects_path) = Text::new("projects folder path")
-        .with_default(
-            dirs::home_dir()
-                .and_then(|a| a.to_str().map(|a| a.to_string()))
-                .expect("No Home dir found")
-                .as_str(),
-        )
-        .prompt()
-    else {
-        std::process::exit(1);
+pub fn fish_config_path(config_dir: &PathBuf) -> PathBuf {
+    path_from_iter([config_dir, &PathBuf::from("fish/config.fish")])
+}
+
+pub fn on_prj_change_path(config_dir: &PathBuf) -> PathBuf {
+    path_from_iter([config_dir, &PathBuf::from("on-prj-change")])
+}
+
+pub fn init_prj(config_dir: PathBuf, no_prompts: bool) -> String {
+    println!("Initializing Wechsel");
+    let home = dirs::home_dir().expect("Could not find home directory");
+
+    // Check for an existing installation
+    let mut found_project_folder = None;
+    let mut single_project_exception = true;
+    for entry in fs::read_dir(&home).unwrap().filter_map(|entry| entry.ok()) {
+        if entry.file_type().map(|typ| typ.is_dir()).unwrap_or(false) {
+            let name = entry.file_name();
+            let name = name.as_os_str().to_str();
+
+            if name
+                .map(|name| name.ends_with(format!(".{PROJECT_EXTENSION}").as_str()))
+                .unwrap_or(false)
+            {
+                if found_project_folder.is_some() {
+                    single_project_exception = false;
+                }
+                found_project_folder.replace(entry.path());
+                if !single_project_exception {
+                    break;
+                }
+            } else if name
+                .map(|name| name.ends_with(format!(".{WECHSEL_FOLDER_EXTENSION}").as_str()))
+                .unwrap_or(false)
+            {
+                single_project_exception = false;
+            }
+        }
+    }
+
+    let prj_path = match (found_project_folder, single_project_exception) {
+        (Some(path), true) => path, // The single project exception means that the root project is the sole project in the home folder and home folder has no .w folders of its own
+        (Some(_), false) => home.clone(),
+        _ => path_from_iter([&home, &PathBuf::from(DEFAULT_ROOT_PRJ)])
+            .with_extension(PROJECT_EXTENSION),
     };
-    let prj_path = path_from_iter([projects_path, root_prj_name]);
 
     if !prj_path.exists() {
-        println!("Creating root project folder");
+        println!("Creating root project folder: at {prj_path:?}");
         fs::create_dir_all(&prj_path).expect("Could not create project folder");
     } else {
         println!("root project folder already exists");
     }
 
-    println!();
+    let (home_folder_names, home_folder_paths): (Vec<_>, Vec<_>) = get_home_folder_paths().unzip();
 
-    println!("Wechsel will now move some of your user folders to the default project.");
-    println!("You should select all folders that you want any project to be able to use.");
-    println!("Otherwise Wechsel cant create symlinks in your home folder.");
-    let Ok(folders) = MultiSelect::new(
-        "Select folders to move to the root project",
-        HOME_FOLDERS.to_vec(),
-    )
-    .with_default(&[0, 1, 2, 3, 4, 5])
-    .prompt() else {
-        std::process::exit(1);
+    let folders = if !no_prompts {
+        println!();
+
+        println!("Wechsel will now move some of your user folders to the root project.");
+        println!("You should select all folders that you want projects to be able to use.");
+        let Ok(folders) = MultiSelect::new(
+            "Select folders to move to the root project",
+            home_folder_names.clone(),
+        )
+        .with_default(&((0..home_folder_names.len()).collect::<Vec<_>>()))
+        .prompt() else {
+            std::process::exit(1);
+        };
+        folders
+    } else {
+        home_folder_names.clone()
     };
 
     for folder in folders.iter() {
-        let folder_path = match *folder {
-            "Desktop" => dirs::desktop_dir().expect("Desktop dir not found"),
-            "Documents" => dirs::document_dir().expect("Documents dir not found"),
-            "Downloads" => dirs::download_dir().expect("Downloads dir not found"),
-            "Pictures" => dirs::picture_dir().expect("Pictures dir not found"),
-            "Videos" => dirs::video_dir().expect("Videos dir not found"),
-            "Music" => dirs::audio_dir().expect("Music dir not found"),
-            a => PathBuf::from(a),
-        };
+        let folder_path = home_folder_paths
+            .get(
+                home_folder_names
+                    .iter()
+                    .position(|name| folder == name)
+                    .unwrap(),
+            )
+            .unwrap();
 
-        let folder_path_buf = PathBuf::from(folder);
-        let target =
-            path_from_iter([&prj_path, &folder_path_buf]).with_extension(WECHSEL_FOLDER_EXTENSION);
+        let target = path_from_iter([&prj_path, &PathBuf::from(folder)])
+            .with_extension(WECHSEL_FOLDER_EXTENSION);
 
         if !folder_path.is_dir() {
             println!("Folder {folder:?} does not exist or isn't a directory");
@@ -86,29 +120,29 @@ pub fn init_prj(config_dir: PathBuf) -> String {
         }
 
         println!("Moving folder {:?} to {:?}", folder_path, &target);
-        if fs::rename(&folder_path, &target).is_err() {
-            eprintln!("Could not move folder: {folder_path:?}, ignoring it");
+        if let Err(err) = fs::rename(folder_path, &target) {
+            eprintln!("Could not move folder: {folder_path:?} to {target:?}, ignoring it; {err}");
         }
     }
 
-    println!("Wechsel is now ready to use.");
-    println!();
-    println!("Would you like to integrate Wechsel into your shells?");
+    let shells = if !no_prompts {
+        println!("Wechsel is now ready to use.");
+        println!();
+        println!("Would you like to integrate Wechsel into your shells?");
 
-    let Ok(shells) = MultiSelect::new("Select shells", vec!["Bash", "Fish"])
-        .with_default(&[0, 1])
-        .prompt()
-    else {
-        std::process::exit(1);
+        let Ok(shells) = MultiSelect::new("Select shells", vec!["Bash", "Fish"])
+            .with_default(&[0, 1])
+            .prompt()
+        else {
+            std::process::exit(1);
+        };
+        shells
+    } else {
+        vec!["Bash", "Fish"]
     };
 
     if shells.contains(&"Bash") {
-        let bashrc = path_from_iter([
-            dirs::home_dir().expect("No Home dir found"),
-            PathBuf::from(".bashrc"),
-        ]);
-
-        let mut file = OpenOptions::new().append(true).open(bashrc);
+        let mut file = OpenOptions::new().append(true).open(bashrc_path());
 
         if let Ok(file) = &mut file {
             let bash = include_str!("../config_files/default_bash_config");
@@ -124,12 +158,9 @@ pub fn init_prj(config_dir: PathBuf) -> String {
     }
 
     if shells.contains(&"Fish") {
-        let fish_config = path_from_iter([
-            dirs::config_dir().expect("No Home dir found"),
-            PathBuf::from("fish/config.fish"),
-        ]);
-
-        let mut file = OpenOptions::new().append(true).open(fish_config);
+        let mut file = OpenOptions::new()
+            .append(true)
+            .open(fish_config_path(&config_dir));
 
         if let Ok(file) = &mut file {
             let fish = include_str!("../config_files/default_fish_config");
@@ -142,7 +173,8 @@ pub fn init_prj(config_dir: PathBuf) -> String {
             eprintln!("Couldn't open fish config, continuing without modifying it.");
         }
     }
-    let on_prj_change = path_from_iter([config_dir.clone(), PathBuf::from("on-prj-change")]);
+
+    let on_prj_change = on_prj_change_path(&config_dir);
 
     if !on_prj_change.exists() {
         println!("Creating on-prj-change script");
@@ -161,5 +193,5 @@ pub fn init_prj(config_dir: PathBuf) -> String {
     } else {
         println!("on-prj-change folder already exists");
     }
-    "home".to_string()
+    DEFAULT_ROOT_PRJ.to_string()
 }

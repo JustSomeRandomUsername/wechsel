@@ -4,10 +4,9 @@ use init::init_prj;
 use inquire::{MultiSelect, Text};
 use migrate::migrate_to_new_config;
 use new::new_prj;
-use std::path::PathBuf;
 use std::{fs, vec};
-use tree::{get_project_tree, TreeOutput};
-use utils::{query_active_project, HOME_FOLDERS};
+use tree::{TreeOutput, get_project_tree};
+use utils::{HOME_FOLDERS, get_config_dir, query_active_project};
 
 mod change;
 mod init;
@@ -15,6 +14,9 @@ mod migrate;
 mod new;
 mod tree;
 mod utils;
+
+#[cfg(test)]
+mod tests;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -47,7 +49,10 @@ pub enum Command {
     #[clap(
         about = "Initialize the config file and create a default project and move the folders to it."
     )]
-    Init,
+    Init {
+        #[clap(short, long)]
+        yes: bool,
+    },
 
     #[clap(about = "Returns the project tree structure as a json string")]
     Tree,
@@ -58,20 +63,15 @@ pub enum Command {
 const PROJECT_EXTENSION: &str = "p";
 const WECHSEL_FOLDER_EXTENSION: &str = "w";
 
-fn main() {
-    let args = Args::parse();
-
-    let config_dir: PathBuf = PathBuf::from_iter([
-        dirs::config_dir().expect("No config folder found"),
-        PathBuf::from("wechsel"),
-    ]);
+pub fn main_with_args(args: Args) {
+    let config_dir = get_config_dir().expect("No config folder found");
     if !config_dir.exists() {
-        fs::create_dir(&config_dir).expect("Could not create config folder");
+        fs::create_dir_all(&config_dir).expect("Could not create config folder");
     }
 
     // Check if Init is selected
-    let mut prj_name = if let Some(Command::Init) = args.command {
-        Some(init_prj(config_dir.clone()))
+    let mut prj_name = if let Some(Command::Init { yes }) = args.command {
+        Some(init_prj(config_dir.clone(), yes))
     } else {
         None
     };
@@ -155,7 +155,7 @@ fn main() {
                     .expect("Could not create new project");
             }
             Command::Change { project_name } => prj_name = Some(project_name.clone()),
-            Command::Init => (),
+            Command::Init { .. } => (),
             Command::Tree => {
                 println!(
                     "{}",
@@ -183,4 +183,9 @@ fn main() {
             }
         }
     }
+}
+fn main() {
+    let args = Args::parse();
+
+    main_with_args(args);
 }

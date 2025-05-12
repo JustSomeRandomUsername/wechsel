@@ -1,5 +1,5 @@
 use crate::{
-    tree::search_for_projects, utils::path_from_iter, PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION,
+    PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION, tree::search_for_projects, utils::path_from_iter,
 };
 use std::{collections::HashMap, fs, io, path::PathBuf};
 
@@ -21,22 +21,22 @@ pub fn new_prj(
         })
         .path;
 
-    let mut new_pr_path = path_from_iter([
-        parent_path,
-        &PathBuf::from(format!("{prj_name}.{PROJECT_EXTENSION}")),
-    ]);
+    let mut new_pr_path =
+        path_from_iter([parent_path, &PathBuf::from(prj_name)]).with_extension(PROJECT_EXTENSION);
 
     // Create Project Folder
 
     if !new_pr_path.exists() {
         fs::create_dir_all(&new_pr_path).expect("Could not create Project Folder");
     } else if !new_pr_path.is_dir() {
-        eprintln!("A file with the name of the new project exists in the place the project folder should be placed. Please either remove that file or specify a different name. {new_pr_path:?}")
+        eprintln!(
+            "A file with the name of the new project exists in the place the project folder should be placed. Please either remove that file or specify a different name. {new_pr_path:?}"
+        )
     }
 
     // Create Subfolders
     for subfolder in folders.iter() {
-        new_pr_path.push(format!("{subfolder}.{WECHSEL_FOLDER_EXTENSION}"));
+        new_pr_path.push(PathBuf::from(subfolder).with_extension(WECHSEL_FOLDER_EXTENSION));
 
         if !new_pr_path.exists() {
             fs::create_dir(&new_pr_path).unwrap_or_else(|e| {

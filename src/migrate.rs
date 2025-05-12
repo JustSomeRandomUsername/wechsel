@@ -1,34 +1,44 @@
 use std::{
     fs::{self},
     io::ErrorKind,
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use serde::Deserialize;
+#[cfg(test)]
+use serde::Serialize;
 
-use crate::{utils::path_from_iter, PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION};
+use crate::{PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION, utils::path_from_iter};
 
 const OLD_CONFIG_NAME: &str = "wechsel_projects.json";
 
 #[derive(Deserialize)]
-struct OldConfig {
-    active: String,
-    all_prjs: OldProject,
+#[cfg_attr(test, derive(Serialize))]
+pub struct OldConfig {
+    pub active: String,
+    pub all_prjs: OldProject,
 }
 
-#[derive(Deserialize)]
-struct OldProject {
-    name: String,
-    path: String,
-    folder: Vec<String>,
-    children: Vec<OldProject>,
+#[derive(Deserialize, Debug)]
+#[cfg_attr(test, derive(Serialize))]
+pub struct OldProject {
+    pub name: String,
+    pub path: String,
+    pub folder: Vec<String>,
+    pub children: Vec<OldProject>,
 }
-pub fn migrate_to_new_config(config_dir: &PathBuf) {
-    let config_path: PathBuf = path_from_iter([config_dir.clone(), PathBuf::from(OLD_CONFIG_NAME)]);
+pub fn get_old_config_file_path(config_dir: &Path) -> PathBuf {
+    path_from_iter([config_dir, PathBuf::from(OLD_CONFIG_NAME).as_path()])
+}
+pub fn migrate_to_new_config(config_dir: &Path) {
+    let config_path: PathBuf = get_old_config_file_path(config_dir);
+    println!("conf path: {config_path:?}");
 
     // Load Config
     if !config_path.exists() {
-        panic!("No config file, it looks like your wechsel setup is was never initialized or is already the new kind")
+        panic!(
+            "No config file, it looks like your wechsel setup is was never initialized or is already the new kind"
+        )
     }
     let contents =
         fs::read_to_string(&config_path).expect("Should have been able to read the file");
@@ -47,65 +57,59 @@ pub fn migrate_to_new_config(config_dir: &PathBuf) {
 fn perform_migration(old: OldConfig) {
     println!("Migrating to new Wechsel setup");
 
-    fn recurse(prj: &OldProject, path: PathBuf) {
-        let prj_folder = path_from_iter([
-            &path,
-            &PathBuf::from(format!("{}.{}", prj.name, PROJECT_EXTENSION)),
+    fn recurse(prj: &OldProject, new_parent_path: &PathBuf, old_parent_path: &PathBuf) {
+        println!(
+            "migrating {:?} {new_parent_path:?} {old_parent_path:?}",
+            prj.name
+        );
+        let old_prj_folder = path_from_iter([old_parent_path, &PathBuf::from(&prj.path)]);
+        let new_prj_folder = path_from_iter([
+            new_parent_path,
+            &PathBuf::from(&prj.name).with_extension(PROJECT_EXTENSION),
         ]);
 
-        if !prj_folder.exists() || !prj_folder.is_dir() {
-            fs::create_dir(&prj_folder).unwrap_or_else(|e| {
-                panic!("Could not create project folder: {prj_folder:?} {}", e)
+        if !new_prj_folder.exists() || !new_prj_folder.is_dir() {
+            fs::create_dir(&new_prj_folder).unwrap_or_else(|e| {
+                panic!("Could not create project folder: {new_prj_folder:?} {}", e)
             });
         }
 
+        // if let Err(e) = std::os::unix::fs::symlink(&old_prj_folder, &new_prj_folder) {
+        //     if !matches!(e.kind(), ErrorKind::AlreadyExists) {
+        //         eprintln!("Could not create symlink of old project {new_prj_folder:?}")
+        //     }
+        // }
+
         for child in &prj.children {
-            let child_path = path_from_iter([path.clone(), PathBuf::from(&child.path)]);
-            let new_child_path = path_from_iter([
-                &prj_folder,
-                &PathBuf::from(format!("{}.{}", child.name, WECHSEL_FOLDER_EXTENSION)),
-            ]);
+            // let child_path = path_from_iter([new_parent_path, &PathBuf::from(&child.path)]);
+            // let new_child_path = path_from_iter([
+            //     &new_prj_folder,
+            //     &PathBuf::from(&child.name).with_extension(WECHSEL_FOLDER_EXTENSION),
+            // ]);
 
-            if let Err(e) = std::os::unix::fs::symlink(&child_path, &new_child_path) {
-                if !matches!(e.kind(), ErrorKind::AlreadyExists) {
-                    eprintln!("Could not create symlink of old project {child_path:?}")
-                }
-            }
+            // if let Err(e) = std::os::unix::fs::symlink(&child_path, &new_child_path) {
+            //     if !matches!(e.kind(), ErrorKind::AlreadyExists) {
+            //         eprintln!("Could not create symlink of old project {child_path:?}")
+            //     }
+            // }
 
-            recurse(child, child_path.clone())
+            recurse(child, &new_prj_folder, &old_prj_folder);
         }
 
-        // Rename folders wechsel folders
+        // symlink wechsel folders
         for folder in prj.folder.iter() {
-            if folder.ends_with(&format!(".{WECHSEL_FOLDER_EXTENSION}")) {
-                continue; // It already does
-            }
-            let folder_path = path_from_iter([&path, &PathBuf::from(folder)]);
+            let folder_path = path_from_iter([&old_prj_folder, &PathBuf::from(folder)]);
 
-            let new_folder_path = PathBuf::from(format!("{folder}.{WECHSEL_FOLDER_EXTENSION}"));
-            let directly_in_project = new_folder_path.components().nth(1).is_some();
-            let new_folder_path =
-                path_from_iter([&path, &PathBuf::from(new_folder_path.file_name().unwrap())]);
+            let new_folder_path = path_from_iter([
+                &new_prj_folder,
+                &PathBuf::from(PathBuf::from(&folder).file_name().unwrap()),
+            ])
+            .with_extension(WECHSEL_FOLDER_EXTENSION);
 
             if !new_folder_path.exists() {
-                if !directly_in_project {
-                    // rename the folder
-                    if let Err(e) = fs::rename(&folder_path, &new_folder_path) {
-                        if !matches!(e.kind(), ErrorKind::NotFound) {
-                            eprintln!(
-                                "Renaming projects {} folder {folder_path:?} to {new_folder_path:?} failed",
-                                &prj.name
-                            )
-                        }
-                    }
-                } else {
-                    // folder symlink it the folders that are not directly in the project folder
-                    if let Err(e) = std::os::unix::fs::symlink(&folder_path, &new_folder_path) {
-                        if !matches!(e.kind(), ErrorKind::AlreadyExists) {
-                            eprintln!(
-                                "Could not create symlink of project folder {new_folder_path:?}"
-                            )
-                        }
+                if let Err(e) = std::os::unix::fs::symlink(&folder_path, &new_folder_path) {
+                    if !matches!(e.kind(), ErrorKind::AlreadyExists) {
+                        eprintln!("Could not create symlink of project folder {new_folder_path:?}")
                     }
                 }
             }
@@ -114,6 +118,7 @@ fn perform_migration(old: OldConfig) {
 
     recurse(
         &old.all_prjs,
-        dirs::home_dir().expect("Could not find home directory"),
+        &dirs::home_dir().expect("Could not find home directory"),
+        &dirs::home_dir().expect("Could not find home directory"),
     );
 }

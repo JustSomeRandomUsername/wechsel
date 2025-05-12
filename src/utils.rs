@@ -14,45 +14,22 @@ pub const HOME_FOLDERS: [&str; 6] = [
     "Videos",
     "Music",
 ];
+pub fn get_home_folder_paths<'a>() -> impl Iterator<Item = (&'a str, PathBuf)> {
+    [
+        (HOME_FOLDERS[0], dirs::desktop_dir()),
+        (HOME_FOLDERS[1], dirs::download_dir()),
+        (HOME_FOLDERS[2], dirs::document_dir()),
+        (HOME_FOLDERS[3], dirs::picture_dir()),
+        (HOME_FOLDERS[4], dirs::video_dir()),
+        (HOME_FOLDERS[5], dirs::audio_dir()),
+    ]
+    .into_iter()
+    .filter_map(|(name, path)| path.map(|a| (name, a)))
+}
 
-// /**
-//  * Searches for the project with the target name
-//  *
-//  * returns a None if target is not found and a Vector with the path of the target project at position 0 followed by the paths of its parents e.g. [path, parent_prj_path, grandparent_prj_path]
-//  */
-// pub fn search_for_project(target_prj_name: &str, tree: &ProjectTreeNode) -> Option<Vec<PathBuf>> {
-//     pub fn inner_search_for_project(
-//         project_path: PathBuf,
-//         target: &str,
-//         tree: &ProjectTreeNode,
-//     ) -> Option<Vec<PathBuf>> {
-//         if project_path
-//             .file_stem()
-//             .map(|stem| stem == target)
-//             .unwrap_or(false)
-//         {
-//             return Some(vec![project_path]);
-//         }
-
-//         for child in tree.children.iter() {
-//             let child_path = path_from_iter([
-//                 &project_path,
-//                 &PathBuf::from(format!("{}.{PROJECT_EXTENSION}", child.prj_name)),
-//             ]);
-//             if let Some(mut result) = inner_search_for_project(child_path, target, child) {
-//                 result.push(project_path);
-//                 return Some(result);
-//             }
-//         }
-//         None
-//     }
-
-//     inner_search_for_project(
-//         dirs::home_dir().expect("Could not find home dir"),
-//         target_prj_name,
-//         tree,
-//     )
-// }
+pub fn get_config_dir() -> Option<PathBuf> {
+    dirs::config_dir().map(|conf| PathBuf::from_iter([conf, PathBuf::from("wechsel")]))
+}
 
 //** Find subfolders of target path that have the wechsel extension*/
 pub fn get_folders(path: &PathBuf) -> Vec<PathBuf> {

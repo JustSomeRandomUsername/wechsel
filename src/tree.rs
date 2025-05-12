@@ -1,17 +1,21 @@
 use std::{fs, path::PathBuf, rc::Rc};
 
+#[cfg(test)]
+use serde::Deserialize;
 use serde::Serialize;
 
-use crate::{utils::is_entry_folder_with_extension, PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION};
+use crate::{PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION, utils::is_entry_folder_with_extension};
 
 #[derive(Serialize)]
+#[cfg_attr(test, derive(Deserialize, Debug))]
 pub struct TreeOutput {
     pub tree: ProjectTreeNode,
     pub active: String,
 }
 #[derive(Debug, Serialize)]
+#[cfg_attr(test, derive(Deserialize))]
 pub struct ProjectTreeNode {
-    #[serde(rename(serialize = "name"))]
+    #[serde(rename(serialize = "name", deserialize = "name"))]
     pub prj_name: String,
     pub children: Vec<ProjectTreeNode>,
     pub path: PathBuf,
@@ -127,101 +131,3 @@ pub fn get_project_tree() -> ProjectTreeNode {
         |_, _, _| (),
     )
 }
-// pub fn get_project_tree(targets: Vec<&str>) -> ProjectTreeNode {
-//     let home = dirs::home_dir().expect("Could not find home directory");
-//     let mut links = vec![];
-
-//     fn inner_get_project_tree<'a>(
-//         path: PathBuf,
-//         mut targets: Option<Vec<&'a str>>,
-//         links: &mut Vec<Vec<Rc<ProjectTreeNode>>>,
-//         depth: usize,
-//     ) -> (Rc<ProjectTreeNode>, Option<Vec<&'a str>>) {
-//         let prj_name = if depth == 0 {
-//             "home".to_string()
-//         } else {
-//             path.file_stem()
-//                 .and_then(|name| name.to_str())
-//                 .unwrap_or_default()
-//                 .to_string()
-//         };
-
-//         let mut found_target = false;
-//         if let Some(ref mut targets) = targets {
-//             if targets.contains(&prj_name.as_str()) {
-//                 targets.retain(|target| target != &prj_name);
-//                 found_target = true;
-//             }
-//             if targets.is_empty() {
-//                 return (
-//                     Rc::new(ProjectTreeNode {
-//                         prj_name,
-//                         path,
-//                         children: vec![],
-//                     }),
-//                     Some(vec![]),
-//                 );
-//             }
-//         }
-
-//         // is set to true after depth 0 to stop all the checks that are not needed after depth 0
-//         let mut has_wechsel_folder = depth != 0;
-//         let mut targets = Some(targets);
-//         let mut children: Vec<Rc<ProjectTreeNode>> = fs::read_dir(&path)
-//             .map(|children| {
-//                 children
-//                     .into_iter()
-//                     .filter_map(|child| {
-//                         if !has_wechsel_folder
-//                             && is_entry_folder_with_extension(&child, WECHSEL_FOLDER_EXTENSION)
-//                                 .is_some()
-//                         {
-//                             has_wechsel_folder = true;
-//                         }
-//                         is_entry_folder_with_extension(&child, PROJECT_EXTENSION).map(|child| {
-//                             let (node, new_targets) = inner_get_project_tree(
-//                                 child.path().clone(),
-//                                 targets.take().unwrap(),
-//                                 links,
-//                                 depth + 1,
-//                             );
-//                             targets.replace(new_targets);
-//                             node
-//                         })
-//                     })
-//                     .collect()
-//             })
-//             .unwrap_or_default();
-
-//         let new_node = if !has_wechsel_folder && children.len() == 1 {
-//             // Extra rule for depth 0, if there is only one child project and no wechsel folders take it out of the tree
-//             children.remove(0)
-//         } else {
-//             Rc::new(ProjectTreeNode {
-//                 prj_name,
-//                 path,
-//                 children,
-//             })
-//         };
-
-//         if found_target {
-//             links.push(vec![new_node.clone()]);
-//         }
-
-//         (new_node, targets.unwrap())
-//     }
-//     Rc::try_unwrap(
-//         inner_get_project_tree(
-//             home,
-//             if targets.is_empty() {
-//                 None
-//             } else {
-//                 Some(targets)
-//             },
-//             &mut links,
-//             0,
-//         )
-//         .0,
-//     )
-//     .unwrap()
-// }
