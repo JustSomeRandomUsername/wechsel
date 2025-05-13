@@ -128,10 +128,10 @@ pub fn create_user_data(home: &PathBuf) {
     call_as_user(["mkdir"].iter().chain(folders.iter()), home);
 
     for folder in folders {
-        generate_files(path_from_iter([home, &PathBuf::from(folder)]), 0);
+        generate_files(&path_from_iter([home, &PathBuf::from(folder)]), 0);
     }
 }
-pub fn generate_files(dir: PathBuf, depth: usize) {
+pub fn generate_files(dir: &PathBuf, depth: usize) {
     for _ in 0..(random::<f32>() * 4.0) as usize {
         let name: String = rand::rng()
             .sample_iter(&Alphanumeric)
@@ -139,12 +139,12 @@ pub fn generate_files(dir: PathBuf, depth: usize) {
             .map(char::from)
             .collect();
 
-        let _ = fs::write(path_from_iter([&dir, &PathBuf::from(&name)]), &name);
+        let _ = fs::write(path_from_iter([dir, &PathBuf::from(&name)]), &name);
 
         if rand::random_bool(1.0 / (depth as f64 + 1.0)) {
             let folder = format!("{name}_dir");
-            call_as_user(&["mkdir", folder.as_str()], &dir);
-            generate_files(path_from_iter([&dir, &PathBuf::from(folder)]), depth + 1);
+            call_as_user(&["mkdir", folder.as_str()], dir);
+            generate_files(&path_from_iter([dir, &PathBuf::from(folder)]), depth + 1);
         }
     }
 }

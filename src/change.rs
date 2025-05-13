@@ -24,11 +24,13 @@ fn link_folder(path: &PathBuf, target_name: &str) -> io::Result<bool> {
         ))?,
         PathBuf::from(target_name),
     ]);
-
     if !path.exists() || (target.exists() && !target.is_symlink()) {
+        if !path.exists() {
+            println!("Could not symlink folder ({path:?}) because it doesn't exists",);
+        }
         println!(
-            "Could not symlink folder, either {:?} doesn't exists or target {:?} exists and is not a symlink",
-            path, target
+            "Could not symlink folder: {:?} exists and is not a symlink. Did you already initialize wechsel on your system? Calling `wechsel init` might resolve this issue.",
+            path
         );
         return Ok(false);
     }

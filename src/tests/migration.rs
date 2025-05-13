@@ -126,8 +126,9 @@ fn generate_prj_files(prj: &OldProject, parent_path: Option<&PathBuf>) {
         .map(|fold| path_from_iter([&path, &PathBuf::from(fold)]))
     {
         fs::create_dir_all(&folder).unwrap();
-        generate_files(folder, 0);
+        generate_files(&folder, 0);
     }
+    generate_files(&path, 1);
 
     for child in prj.children.iter() {
         generate_prj_files(child, Some(&path));

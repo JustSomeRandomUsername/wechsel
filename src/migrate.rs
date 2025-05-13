@@ -63,10 +63,8 @@ fn perform_migration(old: OldConfig) {
             prj.name
         );
         let old_prj_folder = path_from_iter([old_parent_path, &PathBuf::from(&prj.path)]);
-        let new_prj_folder = path_from_iter([
-            new_parent_path,
-            &PathBuf::from(&prj.name).with_extension(PROJECT_EXTENSION),
-        ]);
+        let new_prj_folder = path_from_iter([new_parent_path, &PathBuf::from(&prj.name)])
+            .with_extension(PROJECT_EXTENSION);
 
         if !new_prj_folder.exists() || !new_prj_folder.is_dir() {
             fs::create_dir(&new_prj_folder).unwrap_or_else(|e| {
@@ -80,23 +78,6 @@ fn perform_migration(old: OldConfig) {
         //     }
         // }
 
-        for child in &prj.children {
-            // let child_path = path_from_iter([new_parent_path, &PathBuf::from(&child.path)]);
-            // let new_child_path = path_from_iter([
-            //     &new_prj_folder,
-            //     &PathBuf::from(&child.name).with_extension(WECHSEL_FOLDER_EXTENSION),
-            // ]);
-
-            // if let Err(e) = std::os::unix::fs::symlink(&child_path, &new_child_path) {
-            //     if !matches!(e.kind(), ErrorKind::AlreadyExists) {
-            //         eprintln!("Could not create symlink of old project {child_path:?}")
-            //     }
-            // }
-
-            recurse(child, &new_prj_folder, &old_prj_folder);
-        }
-
-        // symlink wechsel folders
         for folder in prj.folder.iter() {
             let folder_path = path_from_iter([&old_prj_folder, &PathBuf::from(folder)]);
 
@@ -107,13 +88,64 @@ fn perform_migration(old: OldConfig) {
             .with_extension(WECHSEL_FOLDER_EXTENSION);
 
             if !new_folder_path.exists() {
-                if let Err(e) = std::os::unix::fs::symlink(&folder_path, &new_folder_path) {
+                if let Err(e) = fs::rename(&folder_path, &new_folder_path) {
                     if !matches!(e.kind(), ErrorKind::AlreadyExists) {
-                        eprintln!("Could not create symlink of project folder {new_folder_path:?}")
+                        eprintln!(
+                            "Could not move wechsel folder to new project folder {new_folder_path:?}"
+                        )
                     }
                 }
             }
         }
+
+        for child in &prj.children {
+            recurse(child, &new_prj_folder, &old_prj_folder);
+        }
+
+        if old_prj_folder.exists() && old_prj_folder.is_dir() {
+            for file in fs::read_dir(&old_prj_folder).unwrap() {
+                let Ok(file) = file else { continue };
+                let new_file = path_from_iter([&new_prj_folder, &PathBuf::from(file.file_name())]);
+                if !new_file.exists() {
+                    if let Err(e) = fs::rename(file.path(), new_file) {
+                        eprintln!(
+                            "Could not move file ({:?}) from old prj ({}) to new one {}",
+                            file.file_name(),
+                            prj.name,
+                            e
+                        );
+                    }
+                } else {
+                    eprintln!(
+                        "Could not move file ({:?}) from old prj ({}): File already exist in the new project",
+                        file.file_name(),
+                        prj.name
+                    );
+                }
+            }
+            // delete old prj folder if its empty now
+            if fs::read_dir(&old_prj_folder).unwrap().next().is_none() {
+                fs::remove_dir(old_prj_folder).unwrap();
+            }
+        }
+        // // symlink wechsel folders
+        // for folder in prj.folder.iter() {
+        //     let folder_path = path_from_iter([&old_prj_folder, &PathBuf::from(folder)]);
+
+        //     let new_folder_path = path_from_iter([
+        //         &new_prj_folder,
+        //         &PathBuf::from(PathBuf::from(&folder).file_name().unwrap()),
+        //     ])
+        //     .with_extension(WECHSEL_FOLDER_EXTENSION);
+
+        //     if !new_folder_path.exists() {
+        //         if let Err(e) = std::os::unix::fs::symlink(&folder_path, &new_folder_path) {
+        //             if !matches!(e.kind(), ErrorKind::AlreadyExists) {
+        //                 eprintln!("Could not create symlink of project folder {new_folder_path:?}")
+        //             }
+        //         }
+        //     }
+        // }
     }
 
     recurse(
