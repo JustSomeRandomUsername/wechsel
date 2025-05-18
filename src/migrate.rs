@@ -47,7 +47,7 @@ pub fn migrate_to_new_config(config_dir: &Path) {
         perform_migration(conf);
     }
 
-    let new_config_path = config_path.with_extension(".json.old");
+    let new_config_path = config_path.with_extension("json.old");
     if let Err(e) = fs::rename(&config_path, &new_config_path) {
         if !matches!(e.kind(), ErrorKind::NotFound) {
             eprintln!("Renaming config Path from {config_path:?} to {new_config_path:?} failed",)

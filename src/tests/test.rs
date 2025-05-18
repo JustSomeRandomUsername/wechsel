@@ -13,12 +13,13 @@ use crate::{
 };
 
 use super::utils::{
-    assert_included, assert_includes_nothing_other_then, call_as_user, create_user_data,
-    query_folder,
+    assert_included, assert_includes_nothing_other_then, assert_prj_on_change_test, call_as_user,
+    query_folder, setup_home, setup_on_change_test,
 };
 
 pub(crate) struct Project {
     pub name: String,
+    pub path: PathBuf,
     pub folders: Vec<PathBuf>,
     // This is a list of all wechsel folders this prj or any parent has, so all folders that could change if this project gets wechseled
     pub all_relevant_folders: Vec<PathBuf>,
@@ -28,7 +29,7 @@ pub(crate) struct Project {
 fn test1() {
     let home_dir = home_dir().expect("could not find home dir");
 
-    create_user_data(&home_dir);
+    setup_home(&home_dir, true);
     init_test();
     init_test();
 }
@@ -37,14 +38,20 @@ fn test1() {
 fn test2() {
     let home_dir = home_dir().expect("could not find home dir");
 
-    create_user_data(&home_dir);
+    setup_home(&home_dir, true);
     let home_prj = init_test();
     let prj1 = new_test("prj1", &home_prj);
+
+    setup_on_change_test(&home_prj.path);
     change_test(&home_prj);
+    assert_prj_on_change_test(&prj1);
+
+    setup_on_change_test(&prj1.path);
     change_test(&prj1);
+    assert_prj_on_change_test(&prj1);
 }
 
-fn init_test() -> Project {
+pub(crate) fn init_test() -> Project {
     println!("Init");
     let home_dir = home_dir().expect("could not find home dir");
 
@@ -73,7 +80,7 @@ fn init_test() -> Project {
     assert_includes_nothing_other_then(
         after.difference(&before),
         get_home_folder_paths().map(|(_, path)| path).chain([
-            home_prj,
+            home_prj.clone(),
             config_dir.clone(),
             path_from_iter([&home_dir, &PathBuf::from(CURRENT_PROJECT_FOLDER)]),
             fish_config_path(&config_dir),
@@ -83,12 +90,14 @@ fn init_test() -> Project {
             get_enviroment_vars_path(&config_dir),
             path_from_iter(["/root", ".cache"]),
         ]),
+        "init",
     );
 
     let tree = get_current_tree().unwrap();
     assert!(tree.tree.find(DEFAULT_ROOT_PRJ).is_some());
     assert!(tree.active == DEFAULT_ROOT_PRJ);
     Project {
+        path: home_prj,
         name: DEFAULT_ROOT_PRJ.to_string(),
         folders: get_home_folder_paths().map(|(_, p)| p).collect(),
         all_relevant_folders: get_home_folder_paths().map(|(_, p)| p).collect(),
@@ -130,11 +139,6 @@ fn new_test(name: &str, parent: &Project) -> Project {
     let new_prj_path =
         path_from_iter([&root_prj_path, &PathBuf::from(name)]).with_extension(PROJECT_EXTENSION);
 
-    println!(
-        "{before:#?} {after:#?} {:#?}",
-        after.difference(&before).collect::<Vec<_>>()
-    );
-
     let folders: Vec<PathBuf> = folder_list
         .iter()
         .map(|name| {
@@ -145,6 +149,7 @@ fn new_test(name: &str, parent: &Project) -> Project {
 
     let new_prj = Project {
         name: name.to_string(),
+        path: new_prj_path.clone(),
         folders: folders.clone(),
         all_relevant_folders: folders
             .into_iter()
@@ -158,7 +163,7 @@ fn new_test(name: &str, parent: &Project) -> Project {
         path_from_iter([&home_dir, &PathBuf::from(CURRENT_PROJECT_FOLDER)]),
     ]);
     assert_included(after.iter(), folders.clone());
-    assert_includes_nothing_other_then(after.difference(&before), folders);
+    assert_includes_nothing_other_then(after.difference(&before), folders, "new");
 
     let tree = get_current_tree().unwrap();
     assert!(tree.tree.find(name).is_some());
@@ -170,6 +175,7 @@ fn new_test(name: &str, parent: &Project) -> Project {
 pub(crate) fn change_test(prj: &Project) {
     println!("change1: {}", prj.name);
     let home_dir = home_dir().expect("could not find home dir");
+    let config_dir = get_config_dir().expect("Could not find config dir");
 
     let before = query_folder(&home_dir);
 
@@ -194,7 +200,6 @@ pub(crate) fn change_test(prj: &Project) {
                 &PathBuf::from(CURRENT_PROJECT_FOLDER),
             ])]),
     );
-    let config_dir = get_config_dir().expect("Could not find config dir");
     assert_includes_nothing_other_then(
         after.difference(&before),
         prj.all_relevant_folders.clone().into_iter().chain([
@@ -202,9 +207,8 @@ pub(crate) fn change_test(prj: &Project) {
             get_enviroment_vars_fish_path(&config_dir),
             get_enviroment_vars_path(&config_dir),
         ]),
+        "change",
     );
-
-    println!("{:?}", after.difference(&before).collect::<Vec<_>>());
 }
 
 fn get_current_tree() -> Option<TreeOutput> {

@@ -2,8 +2,8 @@ use std::{
     collections::BTreeSet,
     fmt::Debug,
     fs::{self, Metadata},
-    os::unix::fs::MetadataExt,
-    path::PathBuf,
+    os::unix::fs::{MetadataExt, PermissionsExt},
+    path::{self, PathBuf},
     process::{Command, Output},
 };
 
@@ -15,9 +15,12 @@ use crate::{
 use rand::{Rng, distr::Alphanumeric, random};
 use walkdir::WalkDir;
 
-use super::migration::PROJECTS_FOLDER;
+use super::{migration::PROJECTS_FOLDER, test::Project};
 
 pub const PATH_TO_WECHSEL_BINARY: &str = "/workspace/target/release/wechsel";
+pub const PROJECT_ON_CHANGE_FILE_NAME: &str = ".on-prj-change";
+pub const ON_CHANGE_OUTPUT_FILE: &str = "/tmp/test";
+pub const ON_CHANGE_TEST_SCRIPT: &str = "echo $PRJ > ";
 pub struct File(PathBuf, Metadata);
 
 impl Debug for File {
@@ -48,11 +51,15 @@ pub fn assert_includes_nothing_other_then<
 >(
     diff: I2,
     other: I,
+    test_name: &str,
 ) {
     let diff = diff.map(|file| &file.0).collect::<Vec<_>>();
     let other = other.into_iter().collect::<Vec<_>>();
     for item in diff {
-        assert!(other.contains(item), "{:?} was not allowed", item);
+        assert!(
+            other.contains(item),
+            "{item:?} was not allowed in {test_name}-Test",
+        );
     }
 }
 pub fn assert_included<'a, I2: Iterator<Item = &'a File>, I: IntoIterator<Item = PathBuf>>(
@@ -98,7 +105,7 @@ pub fn print_command_output(output: Output) {
             .replace("\\n", "\n")
     );
 }
-pub fn create_user_data(home: &PathBuf) {
+pub fn setup_home(home: &PathBuf, create_folders: bool) {
     let folders = HOME_FOLDERS;
 
     call_as_user(
@@ -123,13 +130,43 @@ pub fn create_user_data(home: &PathBuf) {
             .chain([PROJECTS_FOLDER].iter()),
         home,
     );
-    // println!("{:#?}", query_folder(home));
 
-    call_as_user(["mkdir"].iter().chain(folders.iter()), home);
-
-    for folder in folders {
-        generate_files(&path_from_iter([home, &PathBuf::from(folder)]), 0);
+    if create_folders {
+        call_as_user(["mkdir"].iter().chain(folders.iter()), home);
+        for folder in folders {
+            generate_files(&path_from_iter([home, &PathBuf::from(folder)]), 0);
+        }
     }
+}
+
+pub(crate) fn setup_on_change_test(path: &PathBuf) {
+    let on_prj_change = path_from_iter([path, &PathBuf::from(PROJECT_ON_CHANGE_FILE_NAME)]);
+    fs::write(
+        &on_prj_change,
+        format!("{ON_CHANGE_TEST_SCRIPT}{ON_CHANGE_OUTPUT_FILE}"),
+    )
+    .unwrap();
+    let mut permissions = fs::metadata(&on_prj_change)
+        .expect("Could not get metadata")
+        .permissions();
+
+    // Add execute permission
+    permissions.set_mode(permissions.mode() | 0b001001001);
+
+    fs::set_permissions(&on_prj_change, permissions).expect("Could not set permissions");
+}
+pub(crate) fn assert_prj_on_change_test(prj: &Project) {
+    let test_name = fs::read(ON_CHANGE_OUTPUT_FILE)
+        .ok()
+        .and_then(|bytes| String::from_utf8(bytes).ok())
+        .unwrap();
+
+    assert!(
+        test_name.trim() == prj.name.trim(),
+        "{} != {}",
+        test_name.trim(),
+        prj.name.trim()
+    );
 }
 pub fn generate_files(dir: &PathBuf, depth: usize) {
     for _ in 0..(random::<f32>() * 4.0) as usize {

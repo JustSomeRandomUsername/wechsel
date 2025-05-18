@@ -1,5 +1,6 @@
 use std::{
     fs,
+    os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
 };
 
@@ -7,25 +8,29 @@ use dirs::home_dir;
 use rand::{Rng, distr::Alphanumeric};
 
 use crate::{
+    PROJECT_EXTENSION,
     init::DEFAULT_ROOT_PRJ,
     migrate::{OldConfig, OldProject, get_old_config_file_path},
     tests::{
         test::Project,
-        utils::{PATH_TO_WECHSEL_BINARY, call_as_user, print_command_output},
+        utils::{
+            PATH_TO_WECHSEL_BINARY, assert_prj_on_change_test, call_as_user, print_command_output,
+        },
     },
     utils::{HOME_FOLDERS, get_config_dir, get_home_folder_paths, path_from_iter},
 };
 
 use super::{
-    test::change_test,
-    utils::{create_user_data, generate_files},
+    test::{change_test, init_test},
+    utils::{generate_files, setup_home, setup_on_change_test},
 };
 
 pub const PROJECTS_FOLDER: &str = "projects";
+
 #[test]
 fn migration_test() {
     let home_dir = home_dir().expect("could not find home dir");
-    create_user_data(&home_dir);
+    setup_home(&home_dir, false);
 
     let old_config = setup_migration(
         &home_dir,
@@ -33,8 +38,13 @@ fn migration_test() {
     );
 
     let prjs = perform_migration(&home_dir, old_config);
-    for prj in prjs {
-        change_test(&prj)
+    for prj in prjs.iter() {
+        change_test(prj);
+    }
+    init_test();
+    for prj in prjs.iter() {
+        change_test(prj);
+        assert_prj_on_change_test(prj);
     }
 }
 
@@ -45,19 +55,35 @@ pub(crate) fn perform_migration(home_dir: &PathBuf, old_config: OldConfig) -> Ve
 
     let mut projects = vec![];
 
-    fn convert_config(prj: OldProject, parent: Option<&Project>, projects: &mut Vec<Project>) {
+    fn convert_config(
+        prj: OldProject,
+        parent: Option<&Project>,
+        projects: &mut Vec<Project>,
+        home_dir: &PathBuf,
+    ) {
         let mut home_folders = get_home_folder_paths();
         let folders: Vec<PathBuf> = prj
             .folder
             .iter()
             .filter_map(|folder| {
                 home_folders
-                    .find(|(name, _)| name == folder)
+                    .find(|(name, _)| {
+                        name == &PathBuf::from(folder).file_name().unwrap().to_str().unwrap()
+                    })
                     .map(|(_, path)| path)
             })
             .collect();
+
         let new_prj = Project {
-            name: prj.name,
+            name: prj.name.clone(),
+            path: path_from_iter([
+                parent
+                    .map(|parent| parent.path.clone())
+                    .as_ref()
+                    .unwrap_or(home_dir),
+                &PathBuf::from(prj.name),
+            ])
+            .with_extension(PROJECT_EXTENSION),
             folders: folders.clone(),
             all_relevant_folders: folders
                 .into_iter()
@@ -71,11 +97,11 @@ pub(crate) fn perform_migration(home_dir: &PathBuf, old_config: OldConfig) -> Ve
             parent: parent.map(|par| par.name.clone()),
         };
         for child in prj.children {
-            convert_config(child, Some(&new_prj), projects);
+            convert_config(child, Some(&new_prj), projects, home_dir);
         }
         projects.push(new_prj);
     }
-    convert_config(old_config.all_prjs, None, &mut projects);
+    convert_config(old_config.all_prjs, None, &mut projects, home_dir);
     projects
 }
 
@@ -128,6 +154,9 @@ fn generate_prj_files(prj: &OldProject, parent_path: Option<&PathBuf>) {
         fs::create_dir_all(&folder).unwrap();
         generate_files(&folder, 0);
     }
+
+    setup_on_change_test(&path);
+
     generate_files(&path, 1);
 
     for child in prj.children.iter() {
