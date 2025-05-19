@@ -61,12 +61,11 @@ pub(crate) fn perform_migration(home_dir: &PathBuf, old_config: OldConfig) -> Ve
         projects: &mut Vec<Project>,
         home_dir: &PathBuf,
     ) {
-        let mut home_folders = get_home_folder_paths();
         let folders: Vec<PathBuf> = prj
             .folder
             .iter()
             .filter_map(|folder| {
-                home_folders
+                get_home_folder_paths()
                     .find(|(name, _)| {
                         name == &PathBuf::from(folder).file_name().unwrap().to_str().unwrap()
                     })

@@ -163,7 +163,7 @@ pub(crate) fn assert_prj_on_change_test(prj: &Project) {
 
     assert!(
         test_name.trim() == prj.name.trim(),
-        "{} != {}",
+        "on_change test failed: {} != {}",
         test_name.trim(),
         prj.name.trim()
     );

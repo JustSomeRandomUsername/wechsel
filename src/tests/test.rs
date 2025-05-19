@@ -1,4 +1,8 @@
-use std::path::PathBuf;
+use std::{
+    fs,
+    os::unix::fs::{MetadataExt, symlink},
+    path::PathBuf,
+};
 
 use dirs::home_dir;
 use rand::random_bool;
@@ -7,7 +11,10 @@ use crate::{
     PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION,
     change::{CURRENT_PROJECT_FOLDER, get_enviroment_vars_fish_path, get_enviroment_vars_path},
     init::{DEFAULT_ROOT_PRJ, bashrc_path, fish_config_path, on_prj_change_path},
-    tests::utils::{FindPrj, PATH_TO_WECHSEL_BINARY, print_command_output},
+    tests::{
+        migration::PROJECTS_FOLDER,
+        utils::{FindPrj, PATH_TO_WECHSEL_BINARY, print_command_output},
+    },
     tree::TreeOutput,
     utils::{HOME_FOLDERS, get_config_dir, get_home_folder_paths, path_from_iter},
 };
@@ -20,6 +27,7 @@ use super::utils::{
 pub(crate) struct Project {
     pub name: String,
     pub path: PathBuf,
+    // These are the paths to the folders in the home dir that this project has wechsel folders for
     pub folders: Vec<PathBuf>,
     // This is a list of all wechsel folders this prj or any parent has, so all folders that could change if this project gets wechseled
     pub all_relevant_folders: Vec<PathBuf>,
@@ -42,13 +50,33 @@ fn test2() {
     let home_prj = init_test();
     let prj1 = new_test("prj1", &home_prj);
 
-    setup_on_change_test(&home_prj.path);
-    change_test(&home_prj);
-    assert_prj_on_change_test(&prj1);
-
     setup_on_change_test(&prj1.path);
     change_test(&prj1);
     assert_prj_on_change_test(&prj1);
+
+    setup_on_change_test(&home_prj.path);
+    change_test(&home_prj);
+    assert_prj_on_change_test(&home_prj);
+
+    let new_destination = path_from_iter([&home_dir, &PathBuf::from("test_prj")]);
+    let old_destination = &prj1.path;
+    fs::rename(old_destination, &new_destination).unwrap();
+    symlink(new_destination, old_destination).unwrap();
+
+    let new_destination = path_from_iter([&prj1.folders[1], &PathBuf::from("test_wechsel_folder")]);
+    let old_destination = path_from_iter([
+        &prj1.path,
+        &PathBuf::from(prj1.folders[0].file_name().unwrap()),
+    ])
+    .with_extension(WECHSEL_FOLDER_EXTENSION);
+    fs::rename(&old_destination, &new_destination).unwrap();
+    symlink(new_destination, &old_destination).unwrap();
+
+    change_test(&prj1);
+    assert_prj_on_change_test(&prj1);
+
+    let tree = get_current_tree().unwrap();
+    assert!(tree.tree.find(&prj1.name).is_some());
 }
 
 pub(crate) fn init_test() -> Project {
@@ -141,10 +169,7 @@ fn new_test(name: &str, parent: &Project) -> Project {
 
     let folders: Vec<PathBuf> = folder_list
         .iter()
-        .map(|name| {
-            path_from_iter([&new_prj_path, &PathBuf::from(name)])
-                .with_extension(WECHSEL_FOLDER_EXTENSION)
-        })
+        .map(|name| path_from_iter([&home_dir, &PathBuf::from(name)]))
         .collect();
 
     let new_prj = Project {
@@ -158,10 +183,18 @@ fn new_test(name: &str, parent: &Project) -> Project {
         parent: Some(parent.name.clone()),
     };
 
-    let folders = new_prj.all_relevant_folders.iter().cloned().chain([
-        new_prj_path.clone(),
-        path_from_iter([&home_dir, &PathBuf::from(CURRENT_PROJECT_FOLDER)]),
-    ]);
+    let folders = new_prj
+        .all_relevant_folders
+        .iter()
+        .cloned()
+        .chain([
+            new_prj_path.clone(),
+            path_from_iter([&home_dir, &PathBuf::from(CURRENT_PROJECT_FOLDER)]),
+        ])
+        .chain(folder_list.iter().map(|name| {
+            path_from_iter([&new_prj_path, &PathBuf::from(name)])
+                .with_extension(WECHSEL_FOLDER_EXTENSION)
+        }));
     assert_included(after.iter(), folders.clone());
     assert_includes_nothing_other_then(after.difference(&before), folders, "new");
 
@@ -208,6 +241,34 @@ pub(crate) fn change_test(prj: &Project) {
             get_enviroment_vars_path(&config_dir),
         ]),
         "change",
+    );
+
+    // Assert that the wechsel folders of the target project got symlinked correctly
+    for fold in prj.folders.iter() {
+        if let Ok(home_meta) = fold.metadata() {
+            let folder_target =
+                path_from_iter([&prj.path, &PathBuf::from(fold.file_name().unwrap())])
+                    .with_extension(WECHSEL_FOLDER_EXTENSION);
+            if let Ok(target_meta) = folder_target.metadata() {
+                assert!(
+                    home_meta.dev() == target_meta.dev() && home_meta.ino() == target_meta.ino()
+                )
+            } else {
+                println!("Err 12")
+            }
+        } else {
+            println!("Err 122")
+        }
+    }
+    //Assert that ~/Project is symlinked correctly
+    assert!(
+        path_from_iter([&home_dir, &PathBuf::from(CURRENT_PROJECT_FOLDER)])
+            .metadata()
+            .and_then(|meta| prj.path.metadata().map(|target_meta| (meta, target_meta)))
+            .map(|(m1, m2)| m1.dev() == m2.dev() && m1.ino() == m2.ino())
+            .unwrap_or(false),
+        "~/{CURRENT_PROJECT_FOLDER} is not symlinked correctly to {:?}",
+        &prj.path
     );
 }
 

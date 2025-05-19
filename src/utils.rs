@@ -56,10 +56,7 @@ pub fn is_entry_folder_with_extension<'a>(
     extension: &str,
 ) -> Option<&'a DirEntry> {
     entry.as_ref().ok().and_then(|entry| {
-        (entry
-            .file_type()
-            .map(|file_type| file_type.is_dir())
-            .unwrap_or(false)
+        (entry.path().is_dir()
             && entry
                 .path()
                 .extension()
