@@ -30,9 +30,8 @@ pub struct OldProject {
 pub fn get_old_config_file_path(config_dir: &Path) -> PathBuf {
     path_from_iter([config_dir, PathBuf::from(OLD_CONFIG_NAME).as_path()])
 }
-pub fn migrate_to_new_config(config_dir: &Path) {
+pub fn migrate_to_new_config(config_dir: &Path, no_prompts: bool) {
     let config_path: PathBuf = get_old_config_file_path(config_dir);
-    println!("conf path: {config_path:?}");
 
     // Load Config
     if !config_path.exists() {
@@ -42,6 +41,20 @@ pub fn migrate_to_new_config(config_dir: &Path) {
     }
     let contents =
         fs::read_to_string(&config_path).expect("Should have been able to read the file");
+
+    if !no_prompts {
+        println!("Your about to start the migration to the new wechsel setup.");
+        println!(
+            "To do this this script will move your old projects into a new folder tree in your home directory"
+        );
+        match inquire::prompt_confirmation("Are you sure you want this?") {
+            Ok(true) => (),
+            Ok(false) | Err(_) => {
+                println!("migration was cancled");
+                std::process::exit(1);
+            }
+        }
+    }
 
     if let Ok(conf) = serde_json::from_str::<OldConfig>(&contents) {
         perform_migration(conf);

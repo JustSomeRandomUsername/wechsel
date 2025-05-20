@@ -3,7 +3,7 @@ use std::{
     fmt::Debug,
     fs::{self, Metadata},
     os::unix::fs::{MetadataExt, PermissionsExt},
-    path::{self, PathBuf},
+    path::PathBuf,
     process::{Command, Output},
 };
 

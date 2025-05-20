@@ -1,6 +1,5 @@
 use std::{
     fs,
-    os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
 };
 
@@ -49,7 +48,7 @@ fn migration_test() {
 }
 
 pub(crate) fn perform_migration(home_dir: &PathBuf, old_config: OldConfig) -> Vec<Project> {
-    let output = call_as_user(&[PATH_TO_WECHSEL_BINARY, "migrate"], home_dir);
+    let output = call_as_user(&[PATH_TO_WECHSEL_BINARY, "migrate", "-y"], home_dir);
 
     print_command_output(output);
 

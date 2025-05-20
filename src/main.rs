@@ -57,7 +57,10 @@ pub enum Command {
     #[clap(about = "Returns the project tree structure as a json string")]
     Tree,
     #[clap(about = "Migrate old Json config based wechsel setup to the new folder based one")]
-    Migrate,
+    Migrate {
+        #[clap(short, long)]
+        yes: bool,
+    },
 }
 
 const PROJECT_EXTENSION: &str = "p";
@@ -166,8 +169,8 @@ pub fn main_with_args(args: Args) {
                     .unwrap_or_default()
                 )
             }
-            Command::Migrate => {
-                migrate_to_new_config(&config_dir);
+            Command::Migrate { yes } => {
+                migrate_to_new_config(&config_dir, *yes);
             }
         }
     }

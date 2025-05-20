@@ -11,10 +11,7 @@ use crate::{
     PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION,
     change::{CURRENT_PROJECT_FOLDER, get_enviroment_vars_fish_path, get_enviroment_vars_path},
     init::{DEFAULT_ROOT_PRJ, bashrc_path, fish_config_path, on_prj_change_path},
-    tests::{
-        migration::PROJECTS_FOLDER,
-        utils::{FindPrj, PATH_TO_WECHSEL_BINARY, print_command_output},
-    },
+    tests::utils::{FindPrj, PATH_TO_WECHSEL_BINARY, print_command_output},
     tree::TreeOutput,
     utils::{HOME_FOLDERS, get_config_dir, get_home_folder_paths, path_from_iter},
 };
