@@ -12,7 +12,7 @@ pub fn new_prj(
     println!("Creating Project {:?}", prj_name);
 
     //get parent path
-    let [parent_path] = search_for_projects([&parent]);
+    let [parent_path] = search_for_projects([&parent], config_dir);
     let parent_path = &parent_path
         .as_ref()
         .unwrap_or_else(|| {

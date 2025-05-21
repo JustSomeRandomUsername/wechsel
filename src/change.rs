@@ -48,7 +48,7 @@ pub fn change_prj(prj_name: &str, config_dir: PathBuf) -> io::Result<()> {
 
     let active = query_active_project().unwrap_or_default();
 
-    let [prj_path, old_prj_path] = search_for_projects([prj_name, active.as_str()]);
+    let [prj_path, old_prj_path] = search_for_projects([prj_name, active.as_str()], &config_dir);
 
     let Some(prj_path) = prj_path else {
         eprintln!("Could not find Project {}", prj_name);

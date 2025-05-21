@@ -9,9 +9,9 @@ use rand::{Rng, distr::Alphanumeric};
 use crate::{
     PROJECT_EXTENSION,
     init::DEFAULT_ROOT_PRJ,
-    migrate::{OldConfig, OldProject, get_old_config_file_path},
+    migrate::{OldConfig, OldProject, get_old_config_file_path_unchecked},
     tests::{
-        test::Project,
+        test::{Project, get_current_tree},
         utils::{
             PATH_TO_WECHSEL_BINARY, assert_prj_on_change_test, call_as_user, print_command_output,
         },
@@ -34,6 +34,10 @@ fn migration_test() {
     let old_config = setup_migration(
         &home_dir,
         &get_config_dir().expect("could not find config dir"),
+    );
+    assert!(
+        get_current_tree().is_none(),
+        "Wechsel tree should error if an old setup is present"
     );
 
     let prjs = perform_migration(&home_dir, old_config);
@@ -104,7 +108,7 @@ pub(crate) fn perform_migration(home_dir: &PathBuf, old_config: OldConfig) -> Ve
 }
 
 pub(crate) fn setup_migration(home_dir: &PathBuf, config_dir: &Path) -> OldConfig {
-    let config_path = get_old_config_file_path(config_dir);
+    let config_path = get_old_config_file_path_unchecked(config_dir);
 
     let conf = OldConfig {
         active: DEFAULT_ROOT_PRJ.to_string(),

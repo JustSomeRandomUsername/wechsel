@@ -4,7 +4,10 @@ use std::{fs, path::PathBuf, rc::Rc};
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::{PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION, utils::is_entry_folder_with_extension};
+use crate::{
+    PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION, migrate::get_old_config_file_path,
+    utils::is_entry_folder_with_extension,
+};
 
 #[derive(Serialize)]
 #[cfg_attr(test, derive(Deserialize, Debug))]
@@ -34,6 +37,7 @@ fn recursion_fn<
 >(
     lambda: F,
     lambda_parent: F2,
+    config_dir: &PathBuf,
 ) -> Out {
     let home = dirs::home_dir().expect("Could not find home directory");
 
@@ -48,6 +52,7 @@ fn recursion_fn<
         lambda: &F,
         parent: Option<Rc<Parent>>,
         lambda_parent: &F2,
+        config_dir: &PathBuf,
     ) -> Out {
         let prj_name = if depth == 0 {
             "home".to_string()
@@ -81,6 +86,7 @@ fn recursion_fn<
                                 lambda,
                                 Some(parent_out.clone()),
                                 lambda_parent,
+                                config_dir,
                             )
                         })
                     })
@@ -88,17 +94,37 @@ fn recursion_fn<
             })
             .unwrap_or_default();
 
+        // println!(
+        //     "T {depth}:{prj_name} {has_wechsel_folder} {}",
+        //     children.len()
+        // );
         if !has_wechsel_folder && children.len() == 1 {
             // Extra rule for depth 0, if there is only one child project and no wechsel folders take it out of the tree
             children.remove(0)
+        } else if !has_wechsel_folder
+            && children.is_empty()
+            && get_old_config_file_path(config_dir).is_some()
+        {
+            eprintln!(
+                "Your wechsel setup seems to be setup for an old version of wechsel, please run wechsel migrate to migrate to the new setup"
+            );
+            std::process::exit(1);
+        } else if !has_wechsel_folder && children.is_empty() {
+            eprintln!(
+                "Wechsel could not find any projects in your home directory, are you sure you initialized wechsel already? (wechsel init)"
+            );
+            std::process::exit(1);
         } else {
             lambda(prj_name, children, path, parent_out)
         }
     }
-    inner(home, 0, &lambda, None, &lambda_parent)
+    inner(home, 0, &lambda, None, &lambda_parent, config_dir)
 }
 
-pub fn search_for_projects<const N: usize>(targets: [&str; N]) -> [Option<Rc<FoundProject>>; N] {
+pub fn search_for_projects<const N: usize>(
+    targets: [&str; N],
+    config_dir: &PathBuf,
+) -> [Option<Rc<FoundProject>>; N] {
     recursion_fn(
         |name, children: Vec<[Option<Rc<FoundProject>>; N]>, _, me| {
             let mut found: [Option<Rc<FoundProject>>; N] = [const { None }; N];
@@ -118,10 +144,11 @@ pub fn search_for_projects<const N: usize>(targets: [&str; N]) -> [Option<Rc<Fou
             path: path.clone(),
             parent,
         },
+        config_dir,
     )
 }
 
-pub fn get_project_tree() -> ProjectTreeNode {
+pub fn get_project_tree(config_dir: &PathBuf) -> ProjectTreeNode {
     recursion_fn(
         |prj_name, children, path, _| ProjectTreeNode {
             prj_name,
@@ -129,5 +156,6 @@ pub fn get_project_tree() -> ProjectTreeNode {
             path,
         },
         |_, _, _| (),
+        config_dir,
     )
 }

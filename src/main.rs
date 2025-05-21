@@ -163,7 +163,7 @@ pub fn main_with_args(args: Args) {
                 println!(
                     "{}",
                     serde_json::to_string_pretty(&TreeOutput {
-                        tree: get_project_tree(),
+                        tree: get_project_tree(&config_dir),
                         active: query_active_project().unwrap_or_default(),
                     })
                     .unwrap_or_default()

@@ -44,6 +44,10 @@ fn test2() {
     let home_dir = home_dir().expect("could not find home dir");
 
     setup_home(&home_dir, true);
+    assert!(
+        get_current_tree().is_none(),
+        "Wechsel tree should error if not initialized"
+    );
     let home_prj = init_test();
     let prj1 = new_test("prj1", &home_prj);
 
@@ -60,7 +64,7 @@ fn test2() {
     fs::rename(old_destination, &new_destination).unwrap();
     symlink(new_destination, old_destination).unwrap();
 
-    let new_destination = path_from_iter([&prj1.folders[1], &PathBuf::from("test_wechsel_folder")]);
+    let new_destination = path_from_iter([&home_dir, &PathBuf::from("test_wechsel_folder")]);
     let old_destination = path_from_iter([
         &prj1.path,
         &PathBuf::from(prj1.folders[0].file_name().unwrap()),
@@ -251,10 +255,10 @@ pub(crate) fn change_test(prj: &Project) {
                     home_meta.dev() == target_meta.dev() && home_meta.ino() == target_meta.ino()
                 )
             } else {
-                println!("Err 12")
+                panic!("Err 12 {folder_target:?}")
             }
         } else {
-            println!("Err 122")
+            panic!("Err 122")
         }
     }
     //Assert that ~/Project is symlinked correctly
@@ -269,12 +273,15 @@ pub(crate) fn change_test(prj: &Project) {
     );
 }
 
-fn get_current_tree() -> Option<TreeOutput> {
+pub(crate) fn get_current_tree() -> Option<TreeOutput> {
     let output = call_as_user(
         &[PATH_TO_WECHSEL_BINARY, "tree"],
         &home_dir().expect("could not find home dir"),
     );
-
+    if !output.status.success() && !output.stderr.is_empty() {
+        println!("{}", String::from_utf8(output.stderr).unwrap());
+        return None;
+    }
     serde_json::de::from_str::<TreeOutput>(
         String::from_utf8(output.stdout)
             .unwrap()

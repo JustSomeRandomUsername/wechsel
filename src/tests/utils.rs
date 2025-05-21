@@ -124,7 +124,7 @@ pub fn setup_home(home: &PathBuf, create_folders: bool) {
     call_as_user(["bash", "-c", "rm -r *p"].iter(), home);
 
     call_as_user(
-        ["rm", "-r", CURRENT_PROJECT_FOLDER]
+        ["rm", "-r", CURRENT_PROJECT_FOLDER, "test_prj"]
             .iter()
             .chain(folders.iter())
             .chain([PROJECTS_FOLDER].iter()),
