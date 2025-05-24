@@ -11,18 +11,30 @@ Organise your computer by replacing user folders with symlinks to project folder
 
 Wechsel is a simple tool that helps you by creating individual Download, Desktop, ... folders for each project.
 It replaces the original folders with symlinks to the folders of the current active project.
-Like this the random files you download, will be placed in the Download folder they belong to.
+Now the random files you download, will be placed in the Download folder they belong to.
 
 Additionaly each project can have init scripts that allow you to do things like automaticly sourcing python enviroments in your python projects.
 
 ## How it works
-Wechsel stores all the information about your project in a config fille called ```wechsel_projects.json```.
-This file contains a tree structure of all your project.
-Every project is an entry in that tree that holds information about the project like the name of the project, the path of the project folder of the list of its children.
+Projects are defined by project folders that have the .p filetype e.g. `~/home.p`.
 
-When switching project this file is read to find out which folders are going to be symlinked and what the symlink targets should be.
+All Projects are structured in a tree structure with your home directory as the root. Each projects children need to be placed into their parents project folder. e.g. `~/home.p/uni.p`
 
-If a project dosnt't have a folder that a parent project does have, the folder of the parent project is used. E.g. you project ```uni``` does not have a ```Music``` folder but your root project does, then when swiching to the ```uni``` project the ```Music``` folder of the root project will be symlinked.
+Each project can have wechsel folders that have the .w filetype. These are the folders that will be symlinked to your home directory when the project gets switched to. `~/home.p/uni.p/Desktop.w`
+
+If a project dosnt't have a folder that a parent project does have, the folder of the parent project is used. E.g. you project ```uni``` does not have a ```Music``` folder but the parent project does, then when swiching to the ```uni``` project the ```Music``` folder of the parent project will be symlinked.
+
+## Scripts
+Wechsel has a `on-prj-change` and a `on-prj-create` script in `wechsel` folder in your config directoy, often `~/.config/wechsel`.
+
+These script get called with some env variables set: `PRJ`, `PRJ_PATH` and for the change script also `OLD_PRJ` and `OLD_PRJ_PATH`.
+
+These script can be used to extend the functionality of wechsel.
+Heres a list of some of the things I have been using these for:
+- Giving every project its own wallpaper
+- Creating a python env for every project and auto sourcing the current one
+- Changing git username and email depending on the project
+- Connecting to a vpn on project change 
 
 ## Gnome
 There is an acompanying [gnome extension](https://github.com/JustSomeRandomUsername/wechsel-extension) that integrates Wechsel into the gnome shell.

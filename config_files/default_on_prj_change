@@ -3,10 +3,6 @@
 #Reload Indicator
 gdbus call -e -d org.gnome.shell.extensions.wechsel -o /org/gnome/shell/extensions/wechsel/service -m org.gnome.shell.extensions.wechsel.service.Reload > /dev/null;\
 
-
-#Reload Ding Desktop Icons
-#gdbus call -e -d org.gnome.Nautilus -o /org/gnome/Nautilus/window/$i -m org.gtk.Actions.Activate "@s 'reload'" "@av []" "@a{sv} {}" > /dev/null;\
-
 # Set gnome wallpapers
 # This is searching for images named wallpaper.png and wallpaper_dark.png
 # Light mode wallpaper
