@@ -94,10 +94,6 @@ fn recursion_fn<
             })
             .unwrap_or_default();
 
-        // println!(
-        //     "T {depth}:{prj_name} {has_wechsel_folder} {}",
-        //     children.len()
-        // );
         if !has_wechsel_folder && children.len() == 1 {
             // Extra rule for depth 0, if there is only one child project and no wechsel folders take it out of the tree
             children.remove(0)

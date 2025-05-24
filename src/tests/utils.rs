@@ -77,19 +77,12 @@ pub fn call_as_user<'a, T: Clone + IntoIterator<Item = &'a &'a str>>(
     cmd: T,
     dir: &PathBuf,
 ) -> Output {
-    let cmd2 = cmd.clone(); //TODO Remove
     let mut iter = cmd.into_iter();
     Command::new(iter.next().unwrap())
         .args(iter)
         .current_dir(dir)
         .output()
-        .unwrap_or_else(|e| {
-            panic!(
-                "Failed to execute command {:?}; {:?}",
-                cmd2.into_iter().fold("".to_string(), |a, b| a + b),
-                e
-            )
-        })
+        .unwrap_or_else(|e| panic!("Failed to execute command {:?}", e))
 }
 pub fn print_command_output(output: Output) {
     println!(
