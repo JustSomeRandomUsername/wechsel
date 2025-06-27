@@ -1,9 +1,78 @@
+use inquire::{MultiSelect, Text};
+
 use crate::{
-    PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION, tree::search_for_projects, utils::path_from_iter,
+    PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION,
+    tree::search_for_projects,
+    utils::{HOME_FOLDERS, path_from_iter, query_active_project},
 };
 use std::{collections::HashMap, fs, io, path::PathBuf};
 
-pub fn new_prj(
+pub fn new_prj_cmd(
+    parent: Option<String>,
+    folders: Option<Vec<String>>,
+    project_name: &str,
+    config_dir: &PathBuf,
+) {
+    let pwd = std::env::current_dir().expect("Could not get current dir");
+
+    // Check if the pwd folder is a project folder
+    let found_parent = parent
+        .is_none()
+        .then(|| {
+            pwd.extension()
+                .map(|ext| ext == PROJECT_EXTENSION)
+                .unwrap_or_default()
+                .then(|| {
+                    // current dir is a project
+                    pwd.file_name()
+                        .and_then(|name| name.to_str())
+                        .expect("Could not get parent folder name")
+                        .to_string()
+                })
+        })
+        .flatten();
+
+    let (parent, folders) = if parent.is_none() && folders.is_none() {
+        // If no options are set, ask for them interactively
+
+        let parent = found_parent.unwrap_or_else(|| {
+            // not in a wechsel project so the user has to supply a parent
+            let Ok(parent) = Text::new("parent project")
+                .with_default(&query_active_project().unwrap_or_default())
+                .prompt()
+            else {
+                std::process::exit(1);
+            };
+            parent
+        });
+
+        let Ok(folders) = MultiSelect::new(
+            "Select folders to move to the new project",
+            HOME_FOLDERS.to_vec(),
+        )
+        .with_default(&[0, 1, 2, 3, 4, 5])
+        .prompt() else {
+            std::process::exit(1);
+        };
+
+        let folders: Vec<String> = folders
+            .into_iter()
+            .map(|folder| folder.to_owned())
+            .collect();
+
+        (parent, folders)
+    } else {
+        (
+            parent.unwrap_or(query_active_project().unwrap_or_default()),
+            folders.unwrap_or(vec!["Desktop".to_owned(), "Downloads".to_owned()]),
+        )
+    };
+
+    create_new_prj(project_name, folders, parent, config_dir)
+        .expect("Could not create new project");
+}
+
+pub fn create_new_prj(
     prj_name: &str,
     folders: Vec<String>,
     parent: String,
@@ -25,7 +94,6 @@ pub fn new_prj(
         path_from_iter([parent_path, &PathBuf::from(prj_name)]).with_extension(PROJECT_EXTENSION);
 
     // Create Project Folder
-
     if !new_pr_path.exists() {
         fs::create_dir_all(&new_pr_path).expect("Could not create Project Folder");
     } else if !new_pr_path.is_dir() {

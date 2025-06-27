@@ -7,13 +7,13 @@
 </div>
 
 # Wechsel
-Organise your computer by replacing user folders with symlinks to project folders.
+Organize your computer by replacing user folders with symlinks to project folders.
 
 Wechsel is a simple tool that helps you by creating individual Download, Desktop, ... folders for each project.
 It replaces the original folders with symlinks to the folders of the current active project.
 Now the random files you download, will be placed in the Download folder they belong to.
 
-Additionaly each project can have init scripts that allow you to do things like automaticly sourcing python enviroments in your python projects.
+Additionally each project can have init scripts that allow you to do things like automatically sourcing python environments in your python projects.
 
 ## How it works
 Projects are defined by project folders that have the .p filetype e.g. `~/home.p`.
@@ -22,10 +22,10 @@ All Projects are structured in a tree structure with your home directory as the 
 
 Each project can have wechsel folders that have the .w filetype. These are the folders that will be symlinked to your home directory when the project gets switched to. `~/home.p/uni.p/Desktop.w`
 
-If a project dosnt't have a folder that a parent project does have, the folder of the parent project is used. E.g. you project ```uni``` does not have a ```Music``` folder but the parent project does, then when swiching to the ```uni``` project the ```Music``` folder of the parent project will be symlinked.
+If a project doesn't have a folder that a parent project does have, the folder of the parent project is used. E.g. you project ```uni``` does not have a ```Music``` folder but the parent project does, then when swiching to the ```uni``` project the ```Music``` folder of the parent project will be symlinked.
 
 ## Scripts
-Wechsel has a `on-prj-change` and a `on-prj-create` script in `wechsel` folder in your config directoy, often `~/.config/wechsel`.
+Wechsel has a `on-prj-change` and a `on-prj-create` script in `wechsel` folder in your config directory, often `~/.config/wechsel`.
 
 These script get called with some env variables set: `PRJ`, `PRJ_PATH` and for the change script also `OLD_PRJ` and `OLD_PRJ_PATH`.
 
@@ -37,7 +37,7 @@ Heres a list of some of the things I have been using these for:
 - Connecting to a vpn on project change 
 
 ## Gnome
-There is an acompanying [gnome extension](https://github.com/JustSomeRandomUsername/wechsel-extension) that integrates Wechsel into the gnome shell.
+There is an accompanying [gnome extension](https://github.com/JustSomeRandomUsername/wechsel-extension) that integrates Wechsel into the gnome shell.
 
 ## Installation
 The simplest way to install Wechsel is with ```cargo```:

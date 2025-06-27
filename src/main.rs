@@ -1,12 +1,10 @@
-use crate::change::change_prj;
+use crate::{change::change_prj, new::new_prj_cmd};
 use clap::{Parser, Subcommand};
 use init::init_prj;
-use inquire::{MultiSelect, Text};
 use migrate::migrate_to_new_config;
-use new::new_prj;
-use std::{fs, vec};
+use std::fs;
 use tree::{TreeOutput, get_project_tree};
-use utils::{HOME_FOLDERS, get_config_dir, query_active_project};
+use utils::{get_config_dir, query_active_project};
 
 mod change;
 mod init;
@@ -39,26 +37,27 @@ pub enum Command {
         /// Name of the new project
         project_name: String,
 
-        /// parent project
         #[clap(short, long)]
         parent: Option<String>,
-        /// folders to create in the new project
-        #[clap(long, value_parser, num_args = 1.., value_delimiter = ' ')]
+        #[clap(long, value_parser, num_args = 1.., value_delimiter = ' ', help="the list of folders to create in the new project")]
         folders: Option<Vec<String>>,
     },
     #[clap(
         about = "Initialize the config file and create a default project and move the folders to it."
     )]
     Init {
-        #[clap(short, long)]
+        #[clap(short, long, help = "run non interactively with default values")]
         yes: bool,
     },
 
     #[clap(about = "Returns the project tree structure as a json string")]
-    Tree,
+    Tree {
+        #[clap(long, help = "return the list of wechsel folders per project")]
+        folders: bool,
+    },
     #[clap(about = "Migrate old Json config based wechsel setup to the new folder based one")]
     Migrate {
-        #[clap(short, long)]
+        #[clap(short, long, help = "run non interactively with default values")]
         yes: bool,
     },
 }
@@ -72,18 +71,16 @@ pub fn main_with_args(args: Args) {
         fs::create_dir_all(&config_dir).expect("Could not create config folder");
     }
 
-    // Check if Init is selected
-    let mut prj_name = if let Some(Command::Init { yes }) = args.command {
-        Some(init_prj(config_dir.clone(), yes))
-    } else {
-        None
-    };
-
-    if prj_name.is_none() && args.project_name.is_some() {
-        prj_name = args.project_name;
+    if args.project_name.is_none() && args.command.is_none() {
+        eprintln!(
+            "Either specify a command or a target project. Call wechsel --help for more information"
+        );
+        std::process::exit(1);
     }
 
-    if let Some(cmd) = &args.command {
+    let mut prj_name = args.project_name;
+
+    if let Some(cmd) = args.command {
         match cmd {
             Command::New {
                 project_name,
@@ -91,87 +88,23 @@ pub fn main_with_args(args: Args) {
                 folders,
             } => {
                 prj_name = Some(project_name.clone());
-
-                let pwd = std::env::current_dir().expect("Could not get current dir");
-
-                let found_parent = parent
-                    .is_none()
-                    .then(|| {
-                        pwd.extension()
-                            .map(|ext| ext == PROJECT_EXTENSION)
-                            .unwrap_or_default()
-                            .then(|| {
-                                // current dir is a project
-                                pwd.file_name()
-                                    .and_then(|name| name.to_str())
-                                    .expect("Could not get parent folder name")
-                                    .to_string()
-                            })
-                    })
-                    .flatten();
-
-                let (parent, folders) = if parent.is_none() && folders.is_none() {
-                    // If no options are set, ask for them interactively
-
-                    let pwd = std::env::current_dir().expect("Could not get current dir");
-                    let mut parent_folder = pwd.clone();
-                    parent_folder.pop();
-
-                    let parent = found_parent.unwrap_or_else(|| {
-                        // not in a wechsel project so the user has to supply a parent
-                        let Ok(parent) = Text::new("parent project")
-                            .with_default(&query_active_project().unwrap_or_default())
-                            .prompt()
-                        else {
-                            std::process::exit(1);
-                        };
-                        parent
-                    });
-
-                    let Ok(folders) = MultiSelect::new(
-                        "Select folders to move to the new project",
-                        HOME_FOLDERS.to_vec(),
-                    )
-                    .with_default(&[0, 1, 2, 3, 4, 5])
-                    .prompt() else {
-                        std::process::exit(1);
-                    };
-
-                    let folders: Vec<String> = folders
-                        .into_iter()
-                        .map(|folder| folder.to_owned())
-                        .collect();
-
-                    (parent, folders)
-                } else {
-                    (
-                        parent
-                            .clone()
-                            .unwrap_or(query_active_project().unwrap_or_default()),
-                        folders
-                            .clone()
-                            .unwrap_or(vec!["Desktop".to_owned(), "Downloads".to_owned()]),
-                    )
-                };
-
-                new_prj(project_name, folders, parent, &config_dir)
-                    .expect("Could not create new project");
+                new_prj_cmd(parent, folders, &project_name, &config_dir);
             }
             Command::Change { project_name } => prj_name = Some(project_name.clone()),
-            Command::Init { .. } => (),
-            Command::Tree => {
+            Command::Tree { folders } => {
                 println!(
                     "{}",
                     serde_json::to_string_pretty(&TreeOutput {
-                        tree: get_project_tree(&config_dir),
+                        tree: get_project_tree(&config_dir, folders),
                         active: query_active_project().unwrap_or_default(),
                     })
                     .unwrap_or_default()
                 )
             }
             Command::Migrate { yes } => {
-                migrate_to_new_config(&config_dir, *yes);
+                migrate_to_new_config(&config_dir, yes);
             }
+            Command::Init { yes } => prj_name = Some(init_prj(config_dir.clone(), yes)),
         }
     }
 
