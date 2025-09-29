@@ -112,10 +112,10 @@ pub fn main_with_args(args: Args) {
         //Change Project
         match change_prj(&prj_name, config_dir) {
             Ok(_) => {
-                println!("Changed to Project {}", prj_name);
+                println!("Changed to Project {prj_name}");
             }
             Err(e) => {
-                println!("Could not change to Project {}, Error: {}", prj_name, e);
+                println!("Could not change to Project {prj_name}, Error: {e}");
             }
         }
     }

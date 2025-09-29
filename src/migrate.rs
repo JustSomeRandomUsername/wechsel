@@ -53,7 +53,7 @@ pub fn migrate_to_new_config(config_dir: &Path, no_prompts: bool) {
         match inquire::prompt_confirmation("Are you sure you want this?") {
             Ok(true) => (),
             Ok(false) | Err(_) => {
-                println!("migration was cancled");
+                println!("migration was canceled");
                 std::process::exit(1);
             }
         }
@@ -64,10 +64,10 @@ pub fn migrate_to_new_config(config_dir: &Path, no_prompts: bool) {
     }
 
     let new_config_path = config_path.with_extension("json.old");
-    if let Err(e) = fs::rename(&config_path, &new_config_path) {
-        if !matches!(e.kind(), ErrorKind::NotFound) {
-            eprintln!("Renaming config Path from {config_path:?} to {new_config_path:?} failed",)
-        }
+    if let Err(e) = fs::rename(&config_path, &new_config_path)
+        && !matches!(e.kind(), ErrorKind::NotFound)
+    {
+        eprintln!("Renaming config Path from {config_path:?} to {new_config_path:?} failed",)
     }
 }
 fn perform_migration(old: OldConfig) {
@@ -80,7 +80,7 @@ fn perform_migration(old: OldConfig) {
 
         if !new_prj_folder.exists() || !new_prj_folder.is_dir() {
             fs::create_dir(&new_prj_folder).unwrap_or_else(|e| {
-                panic!("Could not create project folder: {new_prj_folder:?} {}", e)
+                panic!("Could not create project folder: {new_prj_folder:?} {e}")
             });
         }
 
@@ -93,14 +93,11 @@ fn perform_migration(old: OldConfig) {
             ])
             .with_extension(WECHSEL_FOLDER_EXTENSION);
 
-            if !new_folder_path.exists() {
-                if let Err(e) = fs::rename(&folder_path, &new_folder_path) {
-                    if !matches!(e.kind(), ErrorKind::AlreadyExists) {
-                        eprintln!(
-                            "Could not move wechsel folder to new project folder {new_folder_path:?}"
-                        )
-                    }
-                }
+            if !new_folder_path.exists()
+                && let Err(e) = fs::rename(&folder_path, &new_folder_path)
+                && !matches!(e.kind(), ErrorKind::AlreadyExists)
+            {
+                eprintln!("Could not move wechsel folder to new project folder {new_folder_path:?}")
             }
         }
 
@@ -112,20 +109,18 @@ fn perform_migration(old: OldConfig) {
             for file in fs::read_dir(&old_prj_folder).unwrap() {
                 let Ok(file) = file else { continue };
                 let new_file = path_from_iter([&new_prj_folder, &PathBuf::from(file.file_name())]);
-                if !new_file.exists() {
-                    if let Err(e) = fs::rename(file.path(), new_file) {
-                        eprintln!(
-                            "Could not move file ({:?}) from old prj ({}) to new one {}",
-                            file.file_name(),
-                            prj.name,
-                            e
-                        );
-                    }
-                } else {
+                if new_file.exists() {
                     eprintln!(
                         "Could not move file ({:?}) from old prj ({}): File already exist in the new project",
                         file.file_name(),
                         prj.name
+                    );
+                } else if let Err(e) = fs::rename(file.path(), new_file) {
+                    eprintln!(
+                        "Could not move file ({:?}) from old prj ({}) to new one {}",
+                        file.file_name(),
+                        prj.name,
+                        e
                     );
                 }
             }

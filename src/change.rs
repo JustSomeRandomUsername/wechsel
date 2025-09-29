@@ -8,20 +8,17 @@ use crate::{
     utils::{get_folders, path_from_iter, query_active_project},
 };
 
-pub fn get_enviroment_vars_path(config_dir: &PathBuf) -> PathBuf {
+pub fn get_environment_vars_path(config_dir: &PathBuf) -> PathBuf {
     path_from_iter([config_dir, &PathBuf::from("environment_variables.sh")])
 }
 
-pub fn get_enviroment_vars_fish_path(config_dir: &PathBuf) -> PathBuf {
+pub fn get_environment_vars_fish_path(config_dir: &PathBuf) -> PathBuf {
     path_from_iter([config_dir, &PathBuf::from("environment_variables.sh")])
 }
 
 fn link_folder(path: &PathBuf, target_name: &str) -> io::Result<bool> {
     let target = path_from_iter([
-        dirs::home_dir().ok_or(io::Error::new(
-            std::io::ErrorKind::Other,
-            "No Home dir found",
-        ))?,
+        dirs::home_dir().ok_or(io::Error::other("No Home dir found"))?,
         PathBuf::from(target_name),
     ]);
     if !path.exists() || (target.exists() && !target.is_symlink()) {
@@ -51,7 +48,7 @@ pub fn change_prj(prj_name: &str, config_dir: PathBuf) -> io::Result<()> {
     let [prj_path, old_prj_path] = search_for_projects([prj_name, active.as_str()], &config_dir);
 
     let Some(prj_path) = prj_path else {
-        eprintln!("Could not find Project {}", prj_name);
+        eprintln!("Could not find Project {prj_name}");
         std::process::exit(1);
     };
     link_folder(&prj_path.path, CURRENT_PROJECT_FOLDER)?;
@@ -97,14 +94,14 @@ pub fn change_prj(prj_name: &str, config_dir: PathBuf) -> io::Result<()> {
     }
 
     // Write Environment Variables for Fish
-    let environment_vars = get_enviroment_vars_fish_path(&config_dir);
+    let environment_vars = get_environment_vars_fish_path(&config_dir);
     fs::write(
         environment_vars,
         format!("set -x PRJ {prj_name}\nset -x PRJ_PATH {prj_path_string}"),
     )?;
 
     // Write Environment Variables for Bash
-    let environment_vars = get_enviroment_vars_path(&config_dir);
+    let environment_vars = get_environment_vars_path(&config_dir);
     fs::write(
         environment_vars,
         format!("export PRJ={prj_name}\nexport PRJ_PATH={prj_path_string}"),

@@ -148,8 +148,8 @@ pub fn init_prj(config_dir: PathBuf, no_prompts: bool) -> String {
             let bash = include_str!("../config_files/default_bash_config");
 
             for line in bash.lines() {
-                if let Err(e) = writeln!(file, "{}", line) {
-                    eprintln!("Couldn't write to file: {}", e);
+                if let Err(e) = writeln!(file, "{line}") {
+                    eprintln!("Couldn't write to file: {e}");
                 }
             }
         } else {
@@ -165,8 +165,8 @@ pub fn init_prj(config_dir: PathBuf, no_prompts: bool) -> String {
         if let Ok(file) = &mut file {
             let fish = include_str!("../config_files/default_fish_config");
             for line in fish.lines() {
-                if let Err(e) = writeln!(file, "{}", line) {
-                    eprintln!("Couldn't write to file: {}", e);
+                if let Err(e) = writeln!(file, "{line}") {
+                    eprintln!("Couldn't write to file: {e}");
                 }
             }
         } else {
