@@ -1,9 +1,9 @@
 use inquire::{MultiSelect, Text};
 
 use crate::{
-    PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION,
-    tree::search_for_projects,
-    utils::{HOME_FOLDERS, path_from_iter, query_active_project},
+    PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION, query_active_project,
+    tree::{ProjectTreeNode, get_project_tree, search_for_projects},
+    utils::path_from_iter,
 };
 use std::{collections::HashMap, fs, io, path::PathBuf};
 
@@ -46,11 +46,26 @@ pub fn new_prj_cmd(
             parent
         });
 
+        fn collect_folders(folders: &mut Vec<String>, node: ProjectTreeNode) {
+            if let Some(current_folders) = node.folders {
+                for folder in current_folders {
+                    if !folders.iter().any(|f| f == &folder) {
+                        folders.push(folder);
+                    }
+                }
+            }
+            for child in node.children {
+                collect_folders(folders, child);
+            }
+        }
+        let mut folders = vec![];
+        collect_folders(&mut folders, get_project_tree(config_dir, true));
+
         let Ok(folders) = MultiSelect::new(
             "Select folders to move to the new project",
-            HOME_FOLDERS.to_vec(),
+            folders.to_vec(),
         )
-        .with_default(&[0, 1, 2, 3, 4, 5])
+        .with_default(&(0..folders.len()).collect::<Vec<usize>>())
         .prompt() else {
             std::process::exit(1);
         };
@@ -78,7 +93,7 @@ pub fn create_new_prj(
     parent: String,
     config_dir: &PathBuf,
 ) -> io::Result<()> {
-    println!("Creating Project {:?}", prj_name);
+    println!("Creating Project {prj_name:?}");
 
     //get parent path
     let [parent_path] = search_for_projects([&parent], config_dir);
