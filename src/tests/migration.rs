@@ -14,6 +14,7 @@ use crate::{
         test::{Project, get_current_tree},
         utils::{
             PATH_TO_WECHSEL_BINARY, assert_prj_on_change_test, call_as_user, print_command_output,
+            security_check,
         },
     },
     utils::{HOME_FOLDERS, get_config_dir, get_home_folder_paths, path_from_iter},
@@ -28,6 +29,7 @@ pub const PROJECTS_FOLDER: &str = "projects";
 
 #[test]
 fn migration_test() {
+    security_check();
     let home_dir = home_dir().expect("could not find home dir");
     setup_home(&home_dir, false);
 
@@ -96,7 +98,6 @@ pub(crate) fn perform_migration(home_dir: &PathBuf, old_config: OldConfig) -> Ve
                         .unwrap_or(vec![].into_iter()),
                 )
                 .collect(),
-            parent: parent.map(|par| par.name.clone()),
         };
         for child in prj.children {
             convert_config(child, Some(&new_prj), projects, home_dir);

@@ -69,7 +69,7 @@ pub fn assert_included<'a, I2: Iterator<Item = &'a File>, I: IntoIterator<Item =
     let diff = diff.map(|file| &file.0).collect::<Vec<_>>();
 
     for item in other {
-        assert!(diff.contains(&&item), "assert: didn't find {:?}", item);
+        assert!(diff.contains(&&item), "assert: didn't find {item:?}");
     }
 }
 
@@ -82,7 +82,7 @@ pub fn call_as_user<'a, T: Clone + IntoIterator<Item = &'a &'a str>>(
         .args(iter)
         .current_dir(dir)
         .output()
-        .unwrap_or_else(|e| panic!("Failed to execute command {:?}", e))
+        .unwrap_or_else(|e| panic!("Failed to execute command {e:?}"))
 }
 pub fn print_command_output(output: Output) {
     println!(
@@ -192,6 +192,33 @@ pub fn query_folder(home: &PathBuf) -> BTreeSet<File> {
         .collect()
 }
 
+pub fn security_check(/*home: &PathBuf*/) {
+    let output = Command::new("id")
+        .arg("-u")
+        .output()
+        .unwrap_or_else(|e| panic!("Failed to execute id -u. {e:?}"));
+    if String::from_utf8(output.stdout)
+        .unwrap()
+        .replace("\\n", "\n")
+        .trim()
+        != "0"
+    {
+        eprintln!(
+            "These tests should run in a container environment, they will delete and create files in the user directory."
+        );
+        std::process::exit(1);
+    }
+
+    // if read_dir(home)
+    //     .map(|mut dirs| dirs.next().is_some())
+    //     .unwrap_or_default()
+    // {
+    //     eprintln!(
+    //         "The users home directory should be empty at the start of the test;"
+    //     );
+    //     std::process::exit(1);
+    // }
+}
 pub trait FindPrj {
     fn find(self, prj_name: &str) -> Option<ProjectTreeNode>;
 }

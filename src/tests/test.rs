@@ -9,9 +9,9 @@ use rand::random_bool;
 
 use crate::{
     PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION,
-    change::{CURRENT_PROJECT_FOLDER, get_enviroment_vars_fish_path, get_enviroment_vars_path},
+    change::{CURRENT_PROJECT_FOLDER, get_environment_vars_fish_path, get_environment_vars_path},
     init::{DEFAULT_ROOT_PRJ, bashrc_path, fish_config_path, on_prj_change_path},
-    tests::utils::{FindPrj, PATH_TO_WECHSEL_BINARY, print_command_output},
+    tests::utils::{FindPrj, PATH_TO_WECHSEL_BINARY, print_command_output, security_check},
     tree::TreeOutput,
     utils::{HOME_FOLDERS, get_config_dir, get_home_folder_paths, path_from_iter},
 };
@@ -28,10 +28,10 @@ pub(crate) struct Project {
     pub folders: Vec<PathBuf>,
     // This is a list of all wechsel folders this prj or any parent has, so all folders that could change if this project gets wechseled
     pub all_relevant_folders: Vec<PathBuf>,
-    pub parent: Option<String>,
 }
 #[test]
 fn test1() {
+    security_check();
     let home_dir = home_dir().expect("could not find home dir");
 
     setup_home(&home_dir, true);
@@ -41,6 +41,8 @@ fn test1() {
 
 #[test]
 fn test2() {
+    security_check();
+
     let home_dir = home_dir().expect("could not find home dir");
 
     setup_home(&home_dir, true);
@@ -115,8 +117,8 @@ pub(crate) fn init_test() -> Project {
             fish_config_path(&config_dir),
             bashrc_path(),
             on_prj_change_path(&config_dir),
-            get_enviroment_vars_fish_path(&config_dir),
-            get_enviroment_vars_path(&config_dir),
+            get_environment_vars_fish_path(&config_dir),
+            get_environment_vars_path(&config_dir),
             path_from_iter(["/root", ".cache"]),
         ]),
         "init",
@@ -130,7 +132,6 @@ pub(crate) fn init_test() -> Project {
         name: DEFAULT_ROOT_PRJ.to_string(),
         folders: get_home_folder_paths().map(|(_, p)| p).collect(),
         all_relevant_folders: get_home_folder_paths().map(|(_, p)| p).collect(),
-        parent: None,
     }
 }
 
@@ -181,7 +182,6 @@ fn new_test(name: &str, parent: &Project) -> Project {
             .into_iter()
             .chain(parent.all_relevant_folders.iter().cloned())
             .collect(),
-        parent: Some(parent.name.clone()),
     };
 
     let folders = new_prj
@@ -238,8 +238,8 @@ pub(crate) fn change_test(prj: &Project) {
         after.difference(&before),
         prj.all_relevant_folders.clone().into_iter().chain([
             path_from_iter([&home_dir, &PathBuf::from(CURRENT_PROJECT_FOLDER)]),
-            get_enviroment_vars_fish_path(&config_dir),
-            get_enviroment_vars_path(&config_dir),
+            get_environment_vars_fish_path(&config_dir),
+            get_environment_vars_path(&config_dir),
         ]),
         "change",
     );

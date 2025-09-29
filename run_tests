@@ -1,0 +1,2 @@
+#!/bin/bash
+podman run --rm -i --replace -v $(pwd):/workspace:Z --name wechsel-test wechsel-test:latest
