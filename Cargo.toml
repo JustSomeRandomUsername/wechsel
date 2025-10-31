@@ -6,7 +6,6 @@ rust-version = "1.88"
 authors = ["JustSomeRandomUsername"]
 repository = "https://github.com/JustSomeRandomUsername/wechsel"
 readme = "README.md"
-license-file = "LICENSE"
 license = "MIT"
 categories = ["command-line-utilities"]
 keywords = ["organizing", "project"]
