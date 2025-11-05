@@ -4,7 +4,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::WECHSEL_FOLDER_EXTENSION;
+pub const PROJECT_EXTENSION: &str = "p";
+pub const WECHSEL_FOLDER_EXTENSION: &str = "w";
 
 pub const HOME_FOLDERS: [&str; 6] = [
     "Desktop",
@@ -14,6 +15,16 @@ pub const HOME_FOLDERS: [&str; 6] = [
     "Videos",
     "Music",
 ];
+
+pub const CURRENT_PROJECT_FOLDER: &str = "Project";
+
+pub fn get_environment_vars_path(config_dir: &PathBuf) -> PathBuf {
+    path_from_iter([config_dir, &PathBuf::from("environment_variables.sh")])
+}
+
+pub fn get_environment_vars_fish_path(config_dir: &PathBuf) -> PathBuf {
+    path_from_iter([config_dir, &PathBuf::from("environment_variables.fish")])
+}
 pub fn get_home_folder_paths<'a>() -> impl Iterator<Item = (&'a str, PathBuf)> {
     [
         (HOME_FOLDERS[0], dirs::desktop_dir()),

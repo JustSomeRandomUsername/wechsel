@@ -1,10 +1,7 @@
 use dialoguer::{Input, MultiSelect};
+use wechsel::{PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION, path_from_iter, query_active_project};
 
-use crate::{
-    PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION, query_active_project,
-    tree::{ProjectTreeNode, get_project_tree, search_for_projects},
-    utils::path_from_iter,
-};
+use crate::tree::{ProjectTreeNode, get_project_tree, search_for_projects};
 use std::{collections::HashMap, fs, io, path::PathBuf};
 
 pub fn new_prj_cmd(

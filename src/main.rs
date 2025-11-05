@@ -3,16 +3,12 @@ use clap::{Parser, Subcommand};
 use init::init_prj;
 use std::fs;
 use tree::{TreeOutput, get_project_tree};
-use utils::{get_config_dir, query_active_project};
+use wechsel::{get_config_dir, query_active_project};
 
 mod change;
 mod init;
 mod new;
 mod tree;
-mod utils;
-
-#[cfg(test)]
-mod tests;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -54,9 +50,6 @@ pub enum Command {
         folders: bool,
     },
 }
-
-const PROJECT_EXTENSION: &str = "p";
-const WECHSEL_FOLDER_EXTENSION: &str = "w";
 
 pub fn main_with_args(args: Args) {
     let config_dir = get_config_dir().expect("No config folder found");

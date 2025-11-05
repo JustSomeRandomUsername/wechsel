@@ -8,10 +8,7 @@ use dialoguer::MultiSelect;
 use io::Write;
 use std::os::unix::fs::PermissionsExt;
 
-use crate::{
-    PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION,
-    utils::{get_home_folder_paths, path_from_iter},
-};
+use wechsel::{PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION, get_home_folder_paths, path_from_iter};
 
 pub const DEFAULT_ROOT_PRJ: &str = "home";
 

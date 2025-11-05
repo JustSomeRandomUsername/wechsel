@@ -7,10 +7,8 @@ use std::{
 #[cfg(test)]
 use serde::Deserialize;
 use serde::Serialize;
-
-use crate::{
-    PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION,
-    utils::{is_entry_folder_with_extension, path_from_iter},
+use wechsel::{
+    PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION, is_entry_folder_with_extension, path_from_iter,
 };
 
 #[derive(Serialize)]

@@ -1,20 +1,10 @@
 use std::{collections::HashMap, fs, io, path::PathBuf, vec};
 
-pub const CURRENT_PROJECT_FOLDER: &str = "Project";
-
-use crate::{
-    init::on_prj_change_path,
-    tree::search_for_projects,
-    utils::{get_folders, path_from_iter, query_active_project},
+use crate::{init::on_prj_change_path, tree::search_for_projects};
+use wechsel::{
+    CURRENT_PROJECT_FOLDER, get_environment_vars_fish_path, get_environment_vars_path, get_folders,
+    path_from_iter, query_active_project,
 };
-
-pub fn get_environment_vars_path(config_dir: &PathBuf) -> PathBuf {
-    path_from_iter([config_dir, &PathBuf::from("environment_variables.sh")])
-}
-
-pub fn get_environment_vars_fish_path(config_dir: &PathBuf) -> PathBuf {
-    path_from_iter([config_dir, &PathBuf::from("environment_variables.sh")])
-}
 
 fn link_folder(path: &PathBuf, target_name: &str) -> io::Result<bool> {
     let target = path_from_iter([
