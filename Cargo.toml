@@ -12,9 +12,9 @@ keywords = ["organizing", "project"]
 description = "Organize your Computer with projects."
 
 [dependencies]
-clap = { version = "4.5.4", features = ["derive"] }
+clap = { version = "4.5.4", features = ["std", "derive", "help"], default-features = false}
 dirs = "5.0.1"
-serde = { version = "1.0.197", features = ["derive"] }
+serde = { version = "1.0.197", features = ["derive"], default-features = false }
 serde_json = "1.0.115"
 dialoguer = { default-features = false, version = "0.12.0"}
 
