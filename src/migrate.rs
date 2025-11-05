@@ -4,6 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use dialoguer::Confirm;
 use serde::Deserialize;
 #[cfg(test)]
 use serde::Serialize;
@@ -50,7 +51,11 @@ pub fn migrate_to_new_config(config_dir: &Path, no_prompts: bool) {
         println!(
             "To do this this script will move your old projects into a new folder tree in your home directory"
         );
-        match inquire::prompt_confirmation("Are you sure you want this?") {
+
+        match Confirm::new()
+            .with_prompt("Are you sure you want this?")
+            .interact()
+        {
             Ok(true) => (),
             Ok(false) | Err(_) => {
                 println!("migration was canceled");

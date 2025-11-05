@@ -1,4 +1,4 @@
-use inquire::{MultiSelect, Text};
+use dialoguer::{Input, MultiSelect};
 
 use crate::{
     PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION, query_active_project,
@@ -37,14 +37,14 @@ pub fn new_prj_cmd(
 
         let parent = found_parent.unwrap_or_else(|| {
             // not in a wechsel project so the user has to supply a parent
-            let Ok(parent) = Text::new("parent project")
-                .with_default(&query_active_project().unwrap_or_default())
-                .prompt()
-            else {
+
+            let Ok(parent) = Input::new().with_prompt("Parent project").interact_text() else {
                 std::process::exit(1);
             };
             parent
         });
+
+        //TODO Should check if parent exists
 
         fn collect_folders(folders: &mut Vec<String>, node: ProjectTreeNode) {
             if let Some(current_folders) = node.folders {
@@ -61,12 +61,17 @@ pub fn new_prj_cmd(
         let mut folders = vec![];
         collect_folders(&mut folders, get_project_tree(config_dir, true));
 
-        let Ok(folders) = MultiSelect::new(
-            "Select folders to move to the new project",
-            folders.to_vec(),
-        )
-        .with_default(&(0..folders.len()).collect::<Vec<usize>>())
-        .prompt() else {
+        let Ok(folders) = MultiSelect::new()
+            .with_prompt("Select folders to move to the new project")
+            .items(&folders)
+            .report(false)
+            .interact()
+            .map(|i| {
+                i.into_iter()
+                    .map(|i| folders[i].clone())
+                    .collect::<Vec<_>>()
+            })
+        else {
             std::process::exit(1);
         };
 

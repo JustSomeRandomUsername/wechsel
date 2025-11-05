@@ -4,7 +4,7 @@ use std::{
     path::PathBuf,
 };
 
-use inquire::MultiSelect;
+use dialoguer::MultiSelect;
 use io::Write;
 use std::os::unix::fs::PermissionsExt;
 
@@ -83,12 +83,14 @@ pub fn init_prj(config_dir: PathBuf, no_prompts: bool) -> String {
 
         println!("Wechsel will now move some of your user folders to the root project.");
         println!("You should select all folders that you want projects to be able to use.");
-        let Ok(folders) = MultiSelect::new(
-            "Select folders to move to the root project",
-            home_folder_names.clone(),
-        )
-        .with_default(&((0..home_folder_names.len()).collect::<Vec<_>>()))
-        .prompt() else {
+
+        let Ok(folders) = MultiSelect::new()
+            .with_prompt("Select folders to move to the root project")
+            .items(&home_folder_names)
+            .report(false)
+            .interact()
+            .map(|i| i.into_iter().map(|i| home_folder_names[i]).collect())
+        else {
             std::process::exit(1);
         };
         folders
@@ -130,9 +132,13 @@ pub fn init_prj(config_dir: PathBuf, no_prompts: bool) -> String {
         println!();
         println!("Would you like to integrate Wechsel into your shells?");
 
-        let Ok(shells) = MultiSelect::new("Select shells", vec!["Bash", "Fish"])
-            .with_default(&[0, 1])
-            .prompt()
+        let items = vec!["Bash", "Fish"];
+        let Ok(shells) = MultiSelect::new()
+            .with_prompt("Select shells")
+            .items(&items)
+            .report(false)
+            .interact()
+            .map(|i| i.into_iter().map(|i| items[i]).collect())
         else {
             std::process::exit(1);
         };
