@@ -1,12 +1,16 @@
-use std::{fs, path::PathBuf, rc::Rc};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    rc::Rc,
+};
 
 #[cfg(test)]
 use serde::Deserialize;
 use serde::Serialize;
 
 use crate::{
-    PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION, migrate::get_old_config_file_path,
-    utils::is_entry_folder_with_extension,
+    PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION,
+    utils::{is_entry_folder_with_extension, path_from_iter},
 };
 
 #[derive(Serialize)]
@@ -124,7 +128,7 @@ fn recursion_fn<
             && get_old_config_file_path(config_dir).is_some()
         {
             eprintln!(
-                "Your wechsel setup seems to be setup for an old version of wechsel, please run wechsel migrate to migrate to the new setup"
+                "Your wechsel setup seems to be setup for an old version of wechsel, please migrate to the new wechsel setup, to do this you might want to downgrade wechsel to version <= 0.2.3 and call wechsel migrate"
             );
             std::process::exit(1);
         } else if !has_wechsel_folder && children.is_empty() {
@@ -187,4 +191,9 @@ pub fn get_project_tree(config_dir: &PathBuf, collect_folders: bool) -> ProjectT
         config_dir,
         collect_folders,
     )
+}
+
+pub fn get_old_config_file_path(config_dir: &Path) -> Option<PathBuf> {
+    let path = path_from_iter([config_dir, PathBuf::from("wechsel_projects.json").as_path()]);
+    path.exists().then_some(path)
 }

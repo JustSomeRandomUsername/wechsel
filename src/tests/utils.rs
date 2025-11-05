@@ -15,7 +15,7 @@ use crate::{
 use rand::{Rng, distr::Alphanumeric, random};
 use walkdir::WalkDir;
 
-use super::{migration::PROJECTS_FOLDER, test::Project};
+use super::test::Project;
 
 pub const PATH_TO_WECHSEL_BINARY: &str = "/workspace/target/release/wechsel";
 pub const PROJECT_ON_CHANGE_FILE_NAME: &str = ".on-prj-change";
@@ -119,8 +119,7 @@ pub fn setup_home(home: &PathBuf, create_folders: bool) {
     call_as_user(
         ["rm", "-r", CURRENT_PROJECT_FOLDER, "test_prj"]
             .iter()
-            .chain(folders.iter())
-            .chain([PROJECTS_FOLDER].iter()),
+            .chain(folders.iter()),
         home,
     );
 

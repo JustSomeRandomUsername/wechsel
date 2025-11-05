@@ -1,14 +1,12 @@
 use crate::{change::change_prj, new::new_prj_cmd};
 use clap::{Parser, Subcommand};
 use init::init_prj;
-use migrate::migrate_to_new_config;
 use std::fs;
 use tree::{TreeOutput, get_project_tree};
 use utils::{get_config_dir, query_active_project};
 
 mod change;
 mod init;
-mod migrate;
 mod new;
 mod tree;
 mod utils;
@@ -55,11 +53,6 @@ pub enum Command {
         #[clap(long, help = "return the list of wechsel folders per project")]
         folders: bool,
     },
-    #[clap(about = "Migrate old Json config based wechsel setup to the new folder based one")]
-    Migrate {
-        #[clap(short, long, help = "run non interactively with default values")]
-        yes: bool,
-    },
 }
 
 const PROJECT_EXTENSION: &str = "p";
@@ -100,9 +93,6 @@ pub fn main_with_args(args: Args) {
                     })
                     .unwrap_or_default()
                 )
-            }
-            Command::Migrate { yes } => {
-                migrate_to_new_config(&config_dir, yes);
             }
             Command::Init { yes } => prj_name = Some(init_prj(config_dir.clone(), yes)),
         }
