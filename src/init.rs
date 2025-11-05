@@ -8,24 +8,10 @@ use dialoguer::MultiSelect;
 use io::Write;
 use std::os::unix::fs::PermissionsExt;
 
-use wechsel::{PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION, get_home_folder_paths, path_from_iter};
-
-pub const DEFAULT_ROOT_PRJ: &str = "home";
-
-pub fn bashrc_path() -> PathBuf {
-    path_from_iter([
-        dirs::home_dir().expect("No Home dir found"),
-        PathBuf::from(".bashrc"),
-    ])
-}
-
-pub fn fish_config_path(config_dir: &PathBuf) -> PathBuf {
-    path_from_iter([config_dir, &PathBuf::from("fish/config.fish")])
-}
-
-pub fn on_prj_change_path(config_dir: &PathBuf) -> PathBuf {
-    path_from_iter([config_dir, &PathBuf::from("on-prj-change")])
-}
+use wechsel::{
+    DEFAULT_ROOT_PRJ, PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION, bashrc_path, fish_config_path,
+    get_home_folder_paths, on_prj_change_path, path_from_iter,
+};
 
 pub fn init_prj(config_dir: PathBuf, no_prompts: bool) -> String {
     println!("Initializing Wechsel");

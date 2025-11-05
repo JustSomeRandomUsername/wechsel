@@ -1,9 +1,9 @@
 use std::{collections::HashMap, fs, io, path::PathBuf, vec};
 
-use crate::{init::on_prj_change_path, tree::search_for_projects};
+use crate::tree::search_for_projects;
 use wechsel::{
     CURRENT_PROJECT_FOLDER, get_environment_vars_fish_path, get_environment_vars_path, get_folders,
-    path_from_iter, query_active_project,
+    on_prj_change_path, path_from_iter, query_active_project,
 };
 
 fn link_folder(path: &PathBuf, target_name: &str) -> io::Result<bool> {

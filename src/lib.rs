@@ -17,7 +17,22 @@ pub const HOME_FOLDERS: [&str; 6] = [
 ];
 
 pub const CURRENT_PROJECT_FOLDER: &str = "Project";
+pub const DEFAULT_ROOT_PRJ: &str = "home";
 
+pub fn bashrc_path() -> PathBuf {
+    path_from_iter([
+        dirs::home_dir().expect("No Home dir found"),
+        PathBuf::from(".bashrc"),
+    ])
+}
+
+pub fn fish_config_path(config_dir: &PathBuf) -> PathBuf {
+    path_from_iter([config_dir, &PathBuf::from("fish/config.fish")])
+}
+
+pub fn on_prj_change_path(config_dir: &PathBuf) -> PathBuf {
+    path_from_iter([config_dir, &PathBuf::from("on-prj-change")])
+}
 pub fn get_environment_vars_path(config_dir: &PathBuf) -> PathBuf {
     path_from_iter([config_dir, &PathBuf::from("environment_variables.sh")])
 }
