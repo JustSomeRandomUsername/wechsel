@@ -1,14 +1,15 @@
+use crate::utils::{get_config_dir, query_active_project};
 use crate::{change::change_prj, new::new_prj_cmd};
 use clap::{Parser, Subcommand};
 use init::init_prj;
 use std::fs;
 use tree::{TreeOutput, get_project_tree};
-use wechsel::{get_config_dir, query_active_project};
 
 mod change;
 mod init;
 mod new;
 mod tree;
+mod utils;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]

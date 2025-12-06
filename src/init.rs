@@ -8,7 +8,7 @@ use dialoguer::MultiSelect;
 use io::Write;
 use std::os::unix::fs::PermissionsExt;
 
-use wechsel::{
+use crate::utils::{
     DEFAULT_ROOT_PRJ, PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION, bashrc_path, fish_config_path,
     get_home_folder_paths, on_prj_change_path, path_from_iter,
 };

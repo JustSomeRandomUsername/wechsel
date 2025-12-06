@@ -1,5 +1,7 @@
+use crate::utils::{
+    PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION, path_from_iter, query_active_project,
+};
 use dialoguer::{Input, MultiSelect};
-use wechsel::{PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION, path_from_iter, query_active_project};
 
 use crate::tree::{ProjectTreeNode, get_project_tree, search_for_projects};
 use std::{collections::HashMap, fs, io, path::PathBuf};

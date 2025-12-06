@@ -4,21 +4,22 @@ use std::{
     rc::Rc,
 };
 
-#[cfg(test)]
+#[cfg(feature = "deserial")]
 use serde::Deserialize;
 use serde::Serialize;
-use wechsel::{
+
+use crate::utils::{
     PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION, is_entry_folder_with_extension, path_from_iter,
 };
 
 #[derive(Serialize)]
-#[cfg_attr(test, derive(Deserialize, Debug))]
+#[cfg_attr(feature = "deserial", derive(Deserialize, Debug))]
 pub struct TreeOutput {
     pub tree: ProjectTreeNode,
     pub active: String,
 }
 #[derive(Debug, Serialize)]
-#[cfg_attr(test, derive(Deserialize))]
+#[cfg_attr(feature = "deserial", derive(Deserialize))]
 pub struct ProjectTreeNode {
     #[serde(rename(serialize = "name", deserialize = "name"))]
     pub prj_name: String,

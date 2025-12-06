@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fs, io, path::PathBuf, vec};
 
 use crate::tree::search_for_projects;
-use wechsel::{
+use crate::utils::{
     CURRENT_PROJECT_FOLDER, get_environment_vars_fish_path, get_environment_vars_path, get_folders,
     on_prj_change_path, path_from_iter, query_active_project,
 };
