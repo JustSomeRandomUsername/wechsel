@@ -1,5 +1,5 @@
 use std::{
-    fs,
+    array, fs,
     path::{Path, PathBuf},
     rc::Rc,
 };
@@ -9,7 +9,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::utils::{
-    PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION, is_entry_folder_with_extension, path_from_iter,
+    is_entry_folder_with_extension, path_from_iter, PROJECT_EXTENSION, WECHSEL_FOLDER_EXTENSION,
 };
 
 #[derive(Serialize)]
@@ -156,7 +156,7 @@ pub fn search_for_projects<const N: usize>(
 ) -> [Option<Rc<FoundProject>>; N] {
     recursion_fn(
         |name, children: Vec<[Option<Rc<FoundProject>>; N]>, _, me, _| {
-            let mut found: [Option<Rc<FoundProject>>; N] = [const { None }; N];
+            let mut found: [Option<Rc<FoundProject>>; N] = array::from_fn(|_| None);
             for child in children {
                 for (idx, a) in child.iter().enumerate() {
                     if let Some(a) = a {

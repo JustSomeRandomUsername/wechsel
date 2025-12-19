@@ -1,12 +1,23 @@
-FROM ubuntu
+FROM ubuntu:26.04
+
+ENV TZ=Europe/Amsterdam
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
+    && echo $TZ > /etc/timezone
 
 RUN apt-get update && \
       apt-get -y install xdg-user-dirs 
 
+RUN apt-get install -y software-properties-common
+RUN add-apt-repository ppa:just-some-random/wechsel && \
+      apt-get update && \
+      apt-get install wechsel
+
+
 RUN xdg-user-dirs-update
 
-COPY target/debian/wechsel_0.2.4-1_amd64.deb /wechsel.deb
+#COPY target/debian/wechsel_0.2.4-1_amd64.deb /wechsel.deb
 COPY target/release/wechsel_testing /test
-RUN dpkg -i wechsel.deb
 
 CMD ./test

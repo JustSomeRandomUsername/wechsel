@@ -35,7 +35,7 @@ impl PartialEq for File {
 impl Eq for File {}
 impl PartialOrd for File {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.1.ino().cmp(&other.1.ino()))
+        Some(self.cmp(other))
     }
 }
 impl Ord for File {

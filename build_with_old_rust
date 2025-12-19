@@ -1,0 +1,2 @@
+#!/bin/bash
+podman run --rm -i --replace -v $(pwd):/workspace:Z -w /workspace --name wechsel-build rust:1.74.0 cargo build --release --all

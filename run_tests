@@ -1,2 +1,4 @@
 #!/bin/bash
-podman run --rm -i --replace -v $(pwd):/workspace:Z --name wechsel-test wechsel-test:latest
+cargo build --release --all
+buildah bud -t wechsel_ubuntu Dockerfile_Ubuntu
+podman run --rm --replace --name wechsel-test wechsel_ubuntu:latest 
