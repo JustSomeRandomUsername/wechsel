@@ -2,7 +2,7 @@
 name = "wechsel"
 version = "0.2.4"
 edition = "2021"
-rust-version = "1.74"
+rust-version = "1.74.1"
 authors = ["JustSomeRandomUsername"]
 repository = "https://github.com/JustSomeRandomUsername/wechsel"
 readme = "README.md"
