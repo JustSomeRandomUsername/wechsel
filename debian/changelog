@@ -1,0 +1,6 @@
+rust-wechsel (0.2.4-1) stable; urgency=medium
+
+  * Team upload.
+  * Package wechsel 0.2.4 from crates.io using debcargo 2.7.11
+
+ -- just_some_random <just_some_random@posteo.de>  Wed, 10 Dec 2025 19:56:19 +0100
