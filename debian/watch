@@ -1,6 +1,0 @@
-Version: 5
-
-Source: https://qa.debian.org/cgi-bin/fakeupstream.cgi?upstream=crates.io/wechsel
-Matching-Pattern:  .*/crates/wechsel/@ANY_VERSION@/download
-Filenamemangle: s/.*\/(.*)\/download/wechsel-$1\.tar\.gz/g
-Uversionmangle: s/(\d)[_\.\-\+]?((RC|rc|pre|dev|beta|alpha)\.?\d*)$/$1~$2/
