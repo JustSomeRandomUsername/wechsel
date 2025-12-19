@@ -4,7 +4,7 @@ Priority: optional
 Build-Depends: debhelper-compat (= 13),
  dh-sequence-cargo
 Build-Depends-Arch: cargo:native,
- rustc:native (>= 1.88),
+ rustc:native (>= 1.74.1),
  libstd-rust-dev,
  librust-clap-4+derive-dev (>= 4.5.4-~~),
  librust-clap-4+help-dev (>= 4.5.4-~~),
