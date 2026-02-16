@@ -36,6 +36,14 @@ There is an accompanying [gnome extension](https://github.com/JustSomeRandomUser
 
 ## Installation
 
+### Ubuntu
+
+```
+sudo add-apt-repository ppa:just-some-random/wechsel
+sudo apt-get update
+sudo apt-get install wechsel
+```
+
 ### Fedora
 ```
 sudo dnf copr enable just-some-random/Wechsel
